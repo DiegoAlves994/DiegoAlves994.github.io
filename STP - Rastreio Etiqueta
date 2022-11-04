@@ -1,0 +1,119 @@
+create or replace PROCEDURE "AD_STP_GERARETIQ_TRUSS"(P_CODUSU    NUMBER, -- Código do usuário logado
+                                                     P_IDSESSAO  VARCHAR2, -- Identificador da execução. Serve para buscar informações dos parâmetros/campos da execução.
+                                                     P_QTDLINHAS NUMBER, -- Informa a quantidade de registros selecionados no momento da execução.
+                                                     P_MENSAGEM  OUT VARCHAR2-- Caso seja passada uma mensagem aqui, ela será exibida como uma informação ao usuário.
+                                                     ) AS
+  PARAM_NROP    VARCHAR2(4000);
+  PARAM_CODPROD VARCHAR2(4000);
+  PARAM_OBSERVACAO VARCHAR2(4000);
+  PARAM_QTDETIQ NUMBER;
+  FIELD_CODETIQ NUMBER;
+
+
+  v_NROLOTE tgfpro.liscontest%type;
+  v_CODLOCALPADRAO tgfpro.codlocalpadrao%type;
+  v_ultcod     tgfnum.ultcod%type;
+  v_countcaixa int;
+
+BEGIN
+
+  -- Os valores informados pelo formulário de parâmetros, podem ser obtidos com as funções:
+  --     ACT_INT_PARAM
+  --     ACT_DEC_PARAM
+  --     ACT_TXT_PARAM
+  --     ACT_DTA_PARAM
+  -- Estas funções recebem 2 argumentos:
+  --     ID DA SESSÃO - Identificador da execução (Obtido através de P_IDSESSAO))
+  --     NOME DO PARAMETRO - Determina qual parametro deve se deseja obter.
+
+  PARAM_NROP    := ACT_TXT_PARAM(P_IDSESSAO, 'NROP');
+  PARAM_CODPROD := ACT_TXT_PARAM(P_IDSESSAO, 'CODPROD');
+  PARAM_QTDETIQ := ACT_INT_PARAM(P_IDSESSAO, 'QTDETIQ');
+  PARAM_OBSERVACAO := ACT_TXT_PARAM(P_IDSESSAO, 'OBSERVACAO');
+
+  SELECT IPA.NROLOTE
+    into v_NROLOTE
+    FROM TPRIPA IPA
+   INNER JOIN TGFPRO PRO
+      ON (PRO.CODPROD = IPA.CODPRODPA)
+   WHERE IPA.IDIPROC = PARAM_NROP
+     AND IPA.CODPRODPA = PARAM_CODPROD;
+
+      SELECT CODLOCALPADRAO
+    into v_CODLOCALPADRAO
+    FROM TGFPRO
+    WHERE CODPROD = PARAM_CODPROD;
+
+  SELECT COUNT(1) + 1
+    into v_countcaixa
+    FROM AD_TRASETIQUETA E
+   WHERE E.NUOP = PARAM_NROP
+     AND CODPROD = PARAM_CODPROD
+     AND NVL(SITUACAO, '-') <> 'CAN';
+
+
+     select n.ultcod
+      into v_ultcod
+      from tgfnum n
+     where n.arquivo = 'AD_TRASETIQUETA';
+
+  for c1 in 1 .. PARAM_QTDETIQ loop
+  v_ultcod := v_ultcod +1;
+
+
+    insert into AD_TRASETIQUETA
+      (CODETIQ,
+       CODPROD,
+       TIPOPROD,
+       CONTROLE,
+       SITUACAO,
+       CODUSUINCLUSAO,
+       DHINCLUSAO,
+       NUOP,
+       NROCAIXA,
+       GERARMAIOR,
+       CODLOCAL,
+       CODEMP,
+       OBSERVACAO)
+    values
+      (v_ultcod,
+       PARAM_CODPROD,
+       'PA',
+       v_NROLOTE,
+       'NAO',
+       stp_get_codusulogado,
+       SYSDATE,
+       PARAM_NROP,
+       v_countcaixa,
+       'S',
+       v_CODLOCALPADRAO,
+       6, 
+       PARAM_OBSERVACAO);
+
+    v_countcaixa := v_countcaixa + 1;
+
+  end loop;
+
+  update tgfnum num set num.ultcod=v_ultcod where num.arquivo='AD_TRASETIQUETA';
+
+  FOR I IN 1 .. P_QTDLINHAS -- Este loop permite obter o valor de campos dos registros envolvidos na execução.
+   LOOP
+    -- A variável "I" representa o registro corrente.
+    -- Para obter o valor dos campos utilize uma das seguintes funções:
+    --     ACT_INT_FIELD (Retorna o valor de um campo tipo NUMÉRICO INTEIRO))
+    --     ACT_DEC_FIELD (Retorna o valor de um campo tipo NUMÉRICO DECIMAL))
+    --     ACT_TXT_FIELD (Retorna o valor de um campo tipo TEXTO),
+    --     ACT_DTA_FIELD (Retorna o valor de um campo tipo DATA)
+    -- Estas funções recebem 3 argumentos:
+    --     ID DA SESSÃO - Identificador da execução (Obtido através do parâmetro P_IDSESSAO))
+    --     NÚMERO DA LINHA - Relativo a qual linha selecionada.
+    --     NOME DO CAMPO - Determina qual campo deve ser obtido.
+    FIELD_CODETIQ := ACT_INT_FIELD(P_IDSESSAO, I, 'CODETIQ');
+
+  -- <ESCREVA SEU CÓDIGO AQUI (SERÁ EXECUTADO PARA CADA REGISTRO SELECIONADO)> --
+
+  END LOOP;
+
+  -- <ESCREVA SEU CÓDIGO DE FINALIZAÇÃO AQUI> --
+
+END;
