@@ -1,0 +1,159 @@
+create or replace PROCEDURE "AD_STP_ADCALC_FRETE" (
+       P_CODUSU NUMBER,        -- Código do usuário logado
+       P_IDSESSAO VARCHAR2,    -- Identificador da execução. Serve para buscar informações dos parâmetros/campos da execução.
+       P_QTDLINHAS NUMBER,     -- Informa a quantidade de registros selecionados no momento da execução.
+       P_MENSAGEM OUT VARCHAR2 -- Caso seja passada uma mensagem aqui, ela será exibida como uma informação ao usuário.
+) AS
+       FIELD_CODTABFRETE NUMBER;
+       FIELD_NUCALC NUMBER;
+       V_NUCALC INT;
+       V_CODTABFRETE INT;
+       V_TOTPORKG NUMBER;
+        V_FRETEPESO NUMBER;
+       V_FRETEVALOR number;
+       V_GRISS NUMBER;
+       V_PEDAGIO NUMBER;
+       V_DESPACHO NUMBER;
+       V_COLETAENTREGA NUMBER;
+       V_TOTALFRETE NUMBER;
+       V_ICMSFRETE NUMBER;
+       V_TOTALFRETEICMS NUMBER;
+	   V_MAXULTCOD_CAB NUMBER;
+	   V_CODTIPVENDA NUMBER;
+	   V_DHTIPVENDA DATE;
+	   V_CODTIPOPER NUMBER;
+	   V_DHTIPOPER DATE;
+	   V_CODEMP INT;
+	   V_CODPARC NUMBER;
+BEGIN
+
+
+
+       FOR I IN 1..P_QTDLINHAS -- Este loop permite obter o valor de campos dos registros envolvidos na execução.
+       LOOP                   
+
+           FIELD_CODTABFRETE := ACT_INT_FIELD(P_IDSESSAO, I, 'CODTABFRETE');
+           FIELD_NUCALC := ACT_INT_FIELD(P_IDSESSAO, I, 'NUCALC');
+
+
+select CODTABFRETE,NUCALC,TOTPORKG,FRETEPESO,FRETEVALOR,GRISS,PEDAGIO,DESPACHO,COLETAENTREGA,TOTALFRETE, CODEMP,CODTIPVENDA,DHALTER,CODTIPOPER,DHTIPOPER,CODPARC
+into V_CODTABFRETE ,V_NUCALC, V_TOTPORKG, V_FRETEPESO, V_FRETEVALOR, V_GRISS, V_PEDAGIO,V_DESPACHO,V_COLETAENTREGA,  V_TOTALFRETE, V_CODEMP,V_CODTIPVENDA,V_DHTIPVENDA,V_CODTIPOPER, V_DHTIPOPER, V_CODPARC
+from AD_VIEWCALCULOFRETE
+WHERE CODTABFRETE = FIELD_CODTABFRETE
+AND NUCALC = FIELD_NUCALC;
+
+
+select totalfrete*0.12, TOTALFRETE+(totalfrete*0.12)
+INTO V_ICMSFRETE, V_TOTALFRETEICMS
+from AD_VIEWCALCULOFRETE
+WHERE CODTABFRETE = FIELD_CODTABFRETE
+AND NUCALC = FIELD_NUCALC;
+
+
+
+UPDATE AD_CALCULOFRETE 
+SET TOTPORKG = V_TOTPORKG, FRETEPESO = V_FRETEPESO, FRETEVALOR = V_FRETEVALOR, GRISS = V_GRISS, PEDAGIO = V_PEDAGIO, DESPACHO = V_DESPACHO, TAXACOLETA = V_COLETAENTREGA, TOTALFRETE = V_TOTALFRETE,
+CODUSU = stp_get_codusulogado, DTCALCULO = SYSDATE, ICMSFRETE = V_ICMSFRETE, TOTALFRETEICMS = V_TOTALFRETEICMS
+WHERE CODTABFRETE = FIELD_CODTABFRETE
+AND NUCALC = FIELD_NUCALC ;
+
+COMMIT;
+
+ SELECT MAX(NUNOTA)+1
+        INTO V_MAXULTCOD_CAB FROM(SELECT NUNOTA FROM TGFCAB
+        UNION
+        SELECT NUNOTA FROM TGFCAN);
+
+		  INSERT INTO TGFCAB(
+        NUNOTA,
+        CODEMP,
+        NUMNOTA,
+        DTNEG,
+        CODEMPNEGOC,
+        CODTIPOPER,
+        DHTIPOPER,
+        DTALTER,
+        CODCENCUS,
+        CODPROJ,
+        CODNAT,
+        CODPARC,
+        CODTIPVENDA,
+        DHTIPVENDA,
+        VLRNOTA,
+        CIF_FOB,
+        TIPMOV)
+        VALUES(
+        V_MAXULTCOD_CAB,
+        V_CODEMP,
+        0,
+        TRUNC(SYSDATE),
+        V_CODEMP,
+        V_CODTIPOPER,
+        V_DHTIPOPER,
+        SYSDATE,
+		'10201',
+		0,
+        '3010106',
+        V_CODPARC,
+        V_CODTIPVENDA,
+        V_DHTIPVENDA,
+        V_TOTALFRETEICMS,
+        'C',
+        'O');
+
+
+	 INSERT INTO TGFITE(
+                NUNOTA,
+                CODPROD,
+                QTDNEG,
+                VLRUNIT,
+				VLRTOT,
+				BASEICMS,
+				ALIQICMS,
+				VLRICMS,
+                SEQUENCIA,
+                CODEMP,
+                CONTROLE,
+                CODVOL,
+                CODLOCALORIG,
+                ATUALESTOQUE
+            )
+        VALUES(
+                V_MAXULTCOD_CAB,
+                1770,
+                1,
+                V_TOTALFRETE,
+				V_TOTALFRETE,
+				V_TOTALFRETE,
+				12,
+				V_ICMSFRETE,
+                1,
+                V_CODEMP,
+                ' ',
+                'UN',
+                '0',
+                0);
+
+
+		UPDATE AD_CALCULOFRETE SET NUNOTAORIG = V_MAXULTCOD_CAB  WHERE CODTABFRETE = FIELD_CODTABFRETE
+AND NUCALC = FIELD_NUCALC;
+
+    COMMIT;
+
+
+
+
+-- <ESCREVA SEU CÓDIGO AQUI (SERÁ EXECUTADO PARA CADA REGISTRO SELECIONADO)> --
+
+
+
+       END LOOP;
+
+
+P_MENSAGEM := 'Simulação realizada com sucesso (Nro Unico do pedido: ' || V_MAXULTCOD_CAB ||')';
+
+-- <ESCREVA SEU CÓDIGO DE FINALIZAÇÃO AQUI> --
+
+
+
+END;
