@@ -1,0 +1,703 @@
+SELECT par.codvend AS "Cod_vendedor",
+       ven.apelido AS "vendedor",
+       ger.codvend AS "cod_gerente",
+       ger.apelido AS "Gerente",
+       cab.codparc as "Cod_Parc",
+       par.nomeparc as "Parceiro",
+	   PAR.AD_METAMENSAL,
+PAR.AD_SOBREMETA,
+PAR.CODTIPPARC,
+tpp.DESCRTIPPARC,
+  nvl((SELECT SUM(cab1.vlrnota)
+   FROM TGFCAB CAB1,
+        TGFTOP TOP
+   WHERE CAB1.CODTIPOPER = TOP.CODTIPOPER
+     AND CAB1.DHTIPOPER = TOP.DHALTER
+      and(cab1.codvend = :codvend or :codvend is null)
+     AND (CAB1.CODPARC = :CODPARC OR :CODPARC IS NULL)
+     and cab1.codparc = cab.codparc 
+     and cab1.codnat not in (1010105)
+     AND top.TIPATUALFIN = 'I'
+     AND cab1.STATUSNOTA = 'L'
+     AND top.atualfin = 1
+     AND CAB1.CODPARC NOT IN (1,
+                              2,
+                              3,
+                              4,
+                              5,
+                              6,
+                              7,
+                              8,
+                              9,
+                              3815)
+     AND CAB1.TIPMOV IN ('V')
+     AND CAB1.DTENTSAI >= :DATAINI
+     AND CAB1.DTENTSAI <= :DATAFIN),0) AS "Fat_acumulado_mes",
+        nvl((SELECT SUM(cab1.vlrnota)
+   FROM TGFCAB CAB1,
+        TGFTOP TOP
+   WHERE CAB1.CODTIPOPER = TOP.CODTIPOPER
+     AND CAB1.DHTIPOPER = TOP.DHALTER
+      and(cab1.codvend = :codvend or :codvend is null)
+     AND (CAB1.CODPARC = :CODPARC OR :CODPARC IS NULL)
+     and cab1.codparc = cab.codparc 
+     and cab1.codnat not in (1010105)
+     AND top.TIPATUALFIN = 'I'
+     --AND cab1.STATUSNOTA = 'L'
+     AND top.atualfin = -1
+     AND CAB1.CODPARC NOT IN (1,
+                              2,
+                              3,
+                              4,
+                              5,
+                              6,
+                              7,
+                              8,
+                              9,
+                              3815)
+     AND CAB1.TIPMOV IN ('D')
+     AND CAB1.DTENTSAI >= :DATAINI
+     AND CAB1.DTENTSAI <= :DATAFIN),0) as "Dev_Acumulada_mes",
+        nvl((SELECT SUM(cab1.vlrnota)
+   FROM TGFCAB CAB1,
+        TGFTOP TOP
+   WHERE CAB1.CODTIPOPER = TOP.CODTIPOPER
+     AND CAB1.DHTIPOPER = TOP.DHALTER
+      and(cab1.codvend = :codvend or :codvend is null)
+     AND (CAB1.CODPARC = :CODPARC OR :CODPARC IS NULL)
+     and cab1.codparc = cab.codparc 
+     and cab1.codnat not in (1010105)
+     AND top.TIPATUALFIN = 'I'
+     AND cab1.STATUSNOTA = 'L'
+     AND top.atualfin = 1
+     AND CAB1.CODPARC NOT IN (1,
+                              2,
+                              3,
+                              4,
+                              5,
+                              6,
+                              7,
+                              8,
+                              9,
+                              3815)
+     AND CAB1.TIPMOV IN ('V')
+     AND CAB1.DTENTSAI >= :DATAINI
+     AND CAB1.DTENTSAI <= :DATAFIN),0)-nvl((SELECT SUM(cab1.vlrnota)
+   FROM TGFCAB CAB1,
+        TGFTOP TOP
+   WHERE CAB1.CODTIPOPER = TOP.CODTIPOPER
+     AND CAB1.DHTIPOPER = TOP.DHALTER
+      and(cab1.codvend = :codvend or :codvend is null)
+     AND (CAB1.CODPARC = :CODPARC OR :CODPARC IS NULL)
+     and cab1.codparc = cab.codparc 
+     and cab1.codnat not in (1010105)
+     AND top.TIPATUALFIN = 'I'
+     --AND cab1.STATUSNOTA = 'L'
+     AND top.atualfin = -1
+     AND CAB1.CODPARC NOT IN (1,
+                              2,
+                              3,
+                              4,
+                              5,
+                              6,
+                              7,
+                              8,
+                              9,
+                              3815)
+     AND CAB1.TIPMOV IN ('D')
+     AND CAB1.DTENTSAI >= :DATAINI
+     AND CAB1.DTENTSAI <= :DATAFIN),0) AS "Fat_liq_mes",
+        
+        
+        nvl((SELECT SUM(cab1.vlrnota)
+   FROM TGFCAB CAB1,
+        TGFTOP TOP
+   WHERE CAB1.CODTIPOPER = TOP.CODTIPOPER
+     AND CAB1.DHTIPOPER = TOP.DHALTER
+   	 and(cab1.codvend = :codvend or :codvend is null)
+     and cab1.codparc = cab.codparc
+     and cab1.codnat not in (1010105)
+     AND (CAB1.CODPARC = :CODPARC OR :CODPARC IS NULL)
+     AND CAB1.codtipoper not in (3139,3096,3099,3102,3109,3112,3120,3160,3778)
+     AND CAB1.CODPARC NOT IN (1,
+                              2,
+                              3,
+                              4,
+                              5,
+                              6,
+                              7,
+                              8,
+                              9,
+                              3815)
+     AND CAB1.TIPMOV = 'P'
+     AND CAB1.PENDENTE = 'S'
+     AND TOP.BONIFICACAO = 'N'
+     AND CAB1.DTENTSAI >= :DATAINI
+     AND CAB1.DTENTSAI <= :DATAFIN),0) AS "Fat_carteira",
+  nvl((SELECT SUM(cab1.vlrnota)
+   FROM TGFCAB CAB1,
+        TGFTOP TOP
+   WHERE CAB1.CODTIPOPER = TOP.CODTIPOPER
+     AND CAB1.DHTIPOPER = TOP.DHALTER
+     and cab1.codparc = cab.codparc
+     and cab1.codnat not in (1010105)
+     AND (CAB1.CODPARC = :CODPARC OR :CODPARC IS NULL)
+	 and(cab1.codvend = :codvend or :codvend is null)
+     AND top.TIPATUALFIN = 'I'
+     AND cab1.STATUSNOTA = 'L'
+     AND top.atualfin = 1
+     AND CAB1.CODPARC NOT IN (1,
+                              2,
+                              3,
+                              4,
+                              5,
+                              6,
+                              7,
+                              8,
+                              9,
+                              3815)
+     AND CAB1.TIPMOV IN ('V')
+     AND CAB1.DTENTSAI >= :DATAINI
+      
+     AND CAB1.DTENTSAI <= :DATAFIN),0) +
+        nvl((SELECT SUM(cab1.vlrnota)
+   FROM TGFCAB CAB1,
+        TGFTOP TOP
+   WHERE CAB1.CODTIPOPER = TOP.CODTIPOPER
+     AND CAB1.DHTIPOPER = TOP.DHALTER
+     and cab1.codparc = cab.codparc
+     and cab1.codnat not in (1010105)
+     AND (CAB1.CODPARC = :CODPARC OR :CODPARC IS NULL)
+	 and(cab1.codvend = :codvend or :codvend is null)
+     AND CAB1.CODPARC NOT IN (1,
+                              2,
+                              3,
+                              4,
+                              5,
+                              6,
+                              7,
+                              8,
+                              9,
+                              3815)
+     AND CAB1.TIPMOV = 'P'
+     AND CAB1.PENDENTE = 'S'
+     AND CAB1.codtipoper not in (3139,3096,3099,3102,3109,3112,3120,3160,3778)
+     AND TOP.BONIFICACAO = 'N'
+     AND CAB1.DTENTSAI >= :DATAINI
+     AND CAB1.DTENTSAI <= :DATAFIN),0)-nvl((SELECT SUM(cab1.vlrnota)
+   FROM TGFCAB CAB1,
+        TGFTOP TOP
+   WHERE CAB1.CODTIPOPER = TOP.CODTIPOPER
+     AND CAB1.DHTIPOPER = TOP.DHALTER
+      and(cab1.codvend = :codvend or :codvend is null)
+     AND (CAB1.CODPARC = :CODPARC OR :CODPARC IS NULL)
+     and cab1.codparc = cab.codparc 
+     and cab1.codnat not in (1010105)
+     AND top.TIPATUALFIN = 'I'
+     --AND cab1.STATUSNOTA = 'L'
+     AND top.atualfin = -1
+     AND CAB1.CODPARC NOT IN (1,
+                              2,
+                              3,
+                              4,
+                              5,
+                              6,
+                              7,
+                              8,
+                              9,
+                              3815)
+     AND CAB1.TIPMOV IN ('D')
+     AND CAB1.DTENTSAI >= :DATAINI
+     AND CAB1.DTENTSAI <= :DATAFIN),0) AS "Fat_previsto",
+        nvl((SELECT SUM(cab1.vlrnota)
+   FROM TGFCAB CAB1,
+        TGFTOP TOP
+   WHERE CAB1.CODTIPOPER = TOP.CODTIPOPER
+     AND CAB1.DHTIPOPER = TOP.DHALTER
+     and cab1.codparc = cab.codparc
+     and cab1.codnat not in (1010105)
+     AND (CAB1.CODPARC = :CODPARC OR :CODPARC IS NULL)
+	 and(cab1.codvend = :codvend or :codvend is null)
+     AND top.TIPATUALFIN = 'I'
+     AND cab1.STATUSNOTA = 'L'
+     AND top.atualfin = 1
+     AND CAB1.CODPARC NOT IN (1,
+                              2,
+                              3,
+                              4,
+                              5,
+                              6,
+                              7,
+                              8,
+                              9,
+                              3815)
+     AND CAB1.TIPMOV IN ('V')
+     AND CAB1.DTENTSAI >=
+        (select DATAINI from ad_periodos
+WHERE NUPERIODO = (SELECT NUPERIODO-3 FROM AD_PERIODOS WHERE DATAINI = :DATAINI))
+     AND CAB1.DTENTSAI <=  (select DATAFIN from ad_periodos
+WHERE NUPERIODO = (SELECT NUPERIODO-1 FROM AD_PERIODOS WHERE DATAINI = :DATAINI))),0)-nvl((SELECT SUM(cab1.vlrnota)
+   FROM TGFCAB CAB1,
+        TGFTOP TOP
+   WHERE CAB1.CODTIPOPER = TOP.CODTIPOPER
+     AND CAB1.DHTIPOPER = TOP.DHALTER
+     and cab1.codparc = cab.codparc
+     and cab1.codnat not in (1010105)
+     AND (CAB1.CODPARC = :CODPARC OR :CODPARC IS NULL)
+	 and(cab1.codvend = :codvend or :codvend is null)
+     AND top.TIPATUALFIN = 'I'
+     --AND cab1.STATUSNOTA = 'L'
+     AND top.atualfin = -1
+     AND CAB1.CODPARC NOT IN (1,
+                              2,
+                              3,
+                              4,
+                              5,
+                              6,
+                              7,
+                              8,
+                              9,
+                              3815)
+     AND CAB1.TIPMOV IN ('D')
+     AND CAB1.DTENTSAI >= (select DATAINI from ad_periodos
+WHERE NUPERIODO = (SELECT NUPERIODO-3 FROM AD_PERIODOS WHERE DATAINI = :DATAINI))
+      
+     AND CAB1.DTENTSAI <= (select DATAFIN from ad_periodos
+WHERE NUPERIODO = (SELECT NUPERIODO-1 FROM AD_PERIODOS WHERE DATAINI = :DATAINI))),0)  AS "Fat_trimestre",
+        nvl((SELECT SUM(cab1.vlrnota)
+   FROM TGFCAB CAB1,
+        TGFTOP TOP
+   WHERE CAB1.CODTIPOPER = TOP.CODTIPOPER
+     AND CAB1.DHTIPOPER = TOP.DHALTER
+     AND (CAB1.CODPARC = :CODPARC OR :CODPARC IS NULL)
+	 and(cab1.codvend = :codvend or :codvend is null)
+     and cab1.codparc = cab.codparc
+     and cab1.codnat not in (1010105)
+     AND top.TIPATUALFIN = 'I'
+     AND cab1.STATUSNOTA = 'L'
+     AND top.atualfin = 1
+     AND CAB1.CODPARC NOT IN (1,
+                              2,
+                              3,
+                              4,
+                              5,
+                              6,
+                              7,
+                              8,
+                              9,
+                              3815)
+     AND CAB1.TIPMOV IN ('V')
+     AND CAB1.DTENTSAI >= (select DATAINI from ad_periodos
+WHERE NUPERIODO = (SELECT NUPERIODO-3 FROM AD_PERIODOS WHERE DATAINI = :DATAINI))
+     AND CAB1.DTENTSAI <=
+         (select DATAFIN from ad_periodos
+WHERE NUPERIODO = (SELECT NUPERIODO-3 FROM AD_PERIODOS WHERE DATAINI = :DATAINI))),0)-nvl((SELECT SUM(cab1.vlrnota)
+   FROM TGFCAB CAB1,
+        TGFTOP TOP
+   WHERE CAB1.CODTIPOPER = TOP.CODTIPOPER
+     AND CAB1.DHTIPOPER = TOP.DHALTER
+     AND (CAB1.CODPARC = :CODPARC OR :CODPARC IS NULL)
+	 and(cab1.codvend = :codvend or :codvend is null)
+     and cab1.codparc = cab.codparc
+     and cab1.codnat not in (1010105)
+     AND top.TIPATUALFIN = 'I'
+     --AND cab1.STATUSNOTA = 'L'
+     AND top.atualfin = -1
+     AND CAB1.CODPARC NOT IN (1,
+                              2,
+                              3,
+                              4,
+                              5,
+                              6,
+                              7,
+                              8,
+                              9,
+                              3815)
+     AND CAB1.TIPMOV IN ('D')
+     AND CAB1.DTENTSAI >= (select DATAINI from ad_periodos
+WHERE NUPERIODO = (SELECT NUPERIODO-3 FROM AD_PERIODOS WHERE DATAINI = :DATAINI))
+     AND CAB1.DTENTSAI <=(select DATAFIN from ad_periodos
+WHERE NUPERIODO = (SELECT NUPERIODO-3 FROM AD_PERIODOS WHERE DATAINI = :DATAINI))),0)  AS "Fat_mes01_trimestre",
+        nvl((SELECT SUM(cab1.vlrnota)
+   FROM TGFCAB CAB1,
+        TGFTOP TOP
+   WHERE CAB1.CODTIPOPER = TOP.CODTIPOPER
+     AND CAB1.DHTIPOPER = TOP.DHALTER
+     and cab1.codparc = cab.codparc
+     and cab1.codnat not in (1010105)
+     AND (CAB1.CODPARC = :CODPARC OR :CODPARC IS NULL)
+	 and(cab1.codvend = :codvend or :codvend is null)
+     AND top.TIPATUALFIN = 'I'
+     AND cab1.STATUSNOTA = 'L'
+     AND top.atualfin = 1
+     AND CAB1.CODPARC NOT IN (1,
+                              2,
+                              3,
+                              4,
+                              5,
+                              6,
+                              7,
+                              8,
+                              9,
+                              3815)
+     AND CAB1.TIPMOV IN ('V')
+     AND CAB1.DTENTSAI >= (select DATAINI from ad_periodos
+WHERE NUPERIODO = (SELECT NUPERIODO-2 FROM AD_PERIODOS WHERE DATAINI = :DATAINI))
+     AND CAB1.DTENTSAI <=
+        (select DATAFIN from ad_periodos
+WHERE NUPERIODO = (SELECT NUPERIODO-2 FROM AD_PERIODOS WHERE DATAINI = :DATAINI))),0)-nvl((SELECT SUM(cab1.vlrnota)
+   FROM TGFCAB CAB1,
+        TGFTOP TOP
+   WHERE CAB1.CODTIPOPER = TOP.CODTIPOPER
+     AND CAB1.DHTIPOPER = TOP.DHALTER
+     and cab1.codparc = cab.codparc
+     and cab1.codnat not in (1010105)
+     AND (CAB1.CODPARC = :CODPARC OR :CODPARC IS NULL)
+	 and(cab1.codvend = :codvend or :codvend is null)
+     AND top.TIPATUALFIN = 'I'
+     --AND cab1.STATUSNOTA = 'L'
+     AND top.atualfin = -1
+     AND CAB1.CODPARC NOT IN (1,
+                              2,
+                              3,
+                              4,
+                              5,
+                              6,
+                              7,
+                              8,
+                              9,
+                              3815)
+     AND CAB1.TIPMOV IN ('D')
+     AND CAB1.DTENTSAI >= (select DATAINI from ad_periodos
+WHERE NUPERIODO = (SELECT NUPERIODO-2 FROM AD_PERIODOS WHERE DATAINI = :DATAINI))
+     AND CAB1.DTENTSAI <=(select DATAFIN from ad_periodos
+WHERE NUPERIODO = (SELECT NUPERIODO-2 FROM AD_PERIODOS WHERE DATAINI = :DATAINI))),0)  AS "Fat_mes02_trimestre",
+        nvl((SELECT SUM(cab1.vlrnota)
+   FROM TGFCAB CAB1,
+        TGFTOP TOP
+   WHERE CAB1.CODTIPOPER = TOP.CODTIPOPER
+     AND CAB1.DHTIPOPER = TOP.DHALTER
+     and cab1.codparc = cab.codparc
+     and cab1.codnat not in (1010105)
+     AND (CAB1.CODPARC = :CODPARC OR :CODPARC IS NULL)
+	 and(cab1.codvend = :codvend or :codvend is null)
+     AND top.TIPATUALFIN = 'I'
+     AND cab1.STATUSNOTA = 'L'
+     AND top.atualfin = 1
+     AND CAB1.CODPARC NOT IN (1,
+                              2,
+                              3,
+                              4,
+                              5,
+                              6,
+                              7,
+                              8,
+                              9,
+                              3815)
+     AND CAB1.TIPMOV IN ('V')
+     AND CAB1.DTENTSAI >=(select DATAINI from ad_periodos
+WHERE NUPERIODO = (SELECT NUPERIODO-1 FROM AD_PERIODOS WHERE DATAINI = :DATAINI))
+     AND CAB1.DTENTSAI <=
+        (select DATAFIN from ad_periodos
+WHERE NUPERIODO = (SELECT NUPERIODO-1 FROM AD_PERIODOS WHERE DATAINI = :DATAINI))),0)-nvl((SELECT SUM(cab1.vlrnota)
+   FROM TGFCAB CAB1,
+        TGFTOP TOP
+   WHERE CAB1.CODTIPOPER = TOP.CODTIPOPER
+     AND CAB1.DHTIPOPER = TOP.DHALTER
+     and cab1.codparc = cab.codparc
+     and cab1.codnat not in (1010105)
+     AND (CAB1.CODPARC = :CODPARC OR :CODPARC IS NULL)
+	 and(cab1.codvend = :codvend or :codvend is null)
+     AND top.TIPATUALFIN = 'I'
+     --AND cab1.STATUSNOTA = 'L'
+     AND top.atualfin = -1
+     AND CAB1.CODPARC NOT IN (1,
+                              2,
+                              3,
+                              4,
+                              5,
+                              6,
+                              7,
+                              8,
+                              9,
+                              3815)
+     AND CAB1.TIPMOV IN ('D')
+     AND CAB1.DTENTSAI >=
+       (select DATAINI from ad_periodos
+WHERE NUPERIODO = (SELECT NUPERIODO-1 FROM AD_PERIODOS WHERE DATAINI = :DATAINI))
+     AND CAB1.DTENTSAI <=
+         (select DATAFIN from ad_periodos
+WHERE NUPERIODO = (SELECT NUPERIODO-1 FROM AD_PERIODOS WHERE DATAINI = :DATAINI))),0)    AS "Fat_mes03_trimestre",
+         /*nvl((SELECT SUM(cab1.vlrnota)
+   FROM TGFCAB CAB1,
+        TGFTOP TOP
+   WHERE CAB1.CODTIPOPER = TOP.CODTIPOPER
+     AND CAB1.DHTIPOPER = TOP.DHALTER
+     and cab1.codparc = cab.codparc
+     and cab1.codnat not in (1010105)
+     AND (CAB1.CODPARC = :CODPARC OR :CODPARC IS NULL)
+	 and(cab1.codvend = :codvend or :codvend is null)
+     AND top.TIPATUALFIN = 'I'
+     AND cab1.STATUSNOTA = 'L'
+     AND top.atualfin = 1
+     AND CAB1.CODPARC NOT IN (1,
+                              2,
+                              3,
+                              4,
+                              5,
+                              6,
+                              7,
+                              8,
+                              9,
+                              3815)
+     AND CAB1.TIPMOV IN ('V')
+     AND CAB1.DTENTSAI >=
+       (SELECT trunc(SYSDATE-90, 'MM')
+        FROM DUAL)
+     AND CAB1.DTENTSAI <=
+         (SELECT trunc(LAST_DAY(SYSDATE-30))
+        FROM DUAL)),0)-nvl((SELECT SUM(cab1.vlrnota)
+   FROM TGFCAB CAB1,
+        TGFTOP TOP
+   WHERE CAB1.CODTIPOPER = TOP.CODTIPOPER
+     AND CAB1.DHTIPOPER = TOP.DHALTER
+     and cab1.codparc = cab.codparc
+     and cab1.codnat not in (1010105)
+     AND (CAB1.CODPARC = :CODPARC OR :CODPARC IS NULL)
+	 and(cab1.codvend = :codvend or :codvend is null)
+     AND top.TIPATUALFIN = 'I'
+     --AND cab1.STATUSNOTA = 'L'
+     AND top.atualfin = 1
+     AND CAB1.CODPARC NOT IN (1,
+                              2,
+                              3,
+                              4,
+                              5,
+                              6,
+                              7,
+                              8,
+                              9,
+                              3815)
+     AND CAB1.TIPMOV IN ('D')
+     AND CAB1.DTENTSAI >=
+       (SELECT trunc(SYSDATE-90, 'MM')
+        FROM DUAL)
+     AND CAB1.DTENTSAI <=
+         (SELECT trunc(LAST_DAY(SYSDATE-30))
+        FROM DUAL)),0)/3 AS "Media_trimestre",*/
+        nvl((SELECT SUM(cab1.vlrnota)
+   FROM TGFCAB CAB1,
+        TGFTOP TOP
+   WHERE CAB1.CODTIPOPER = TOP.CODTIPOPER
+     AND CAB1.DHTIPOPER = TOP.DHALTER
+     AND (CAB1.CODPARC = :CODPARC OR :CODPARC IS NULL)
+	 and(cab1.codvend = :codvend or :codvend is null)
+     and cab1.codparc = cab.codparc   
+     and cab1.codnat not in (1010105)
+     AND top.TIPATUALFIN = 'I'
+     AND cab1.STATUSNOTA = 'L'
+     AND top.atualfin = 1
+     AND CAB1.CODPARC NOT IN (1,
+                              2,
+                              3,
+                              4,
+                              5,
+                              6,
+                              7,
+                              8,
+                              9,
+                              3815)
+     AND CAB1.TIPMOV IN ('V')
+     AND CAB1.DTENTSAI >=
+       (select (TRUNC(SYSDATE, 'YEAR')) from dual)
+     AND CAB1.DTENTSAI <=:DATAFIN),0)-nvl((SELECT SUM(cab1.vlrnota)
+   FROM TGFCAB CAB1,
+        TGFTOP TOP
+   WHERE CAB1.CODTIPOPER = TOP.CODTIPOPER
+     AND CAB1.DHTIPOPER = TOP.DHALTER
+     AND (CAB1.CODPARC = :CODPARC OR :CODPARC IS NULL)
+	 and(cab1.codvend = :codvend or :codvend is null)
+     and cab1.codparc = cab.codparc   
+     and cab1.codnat not in (1010105)
+     AND top.TIPATUALFIN = 'I'
+     --AND cab1.STATUSNOTA = 'L'
+     AND top.atualfin = -1
+     AND CAB1.CODPARC NOT IN (1,
+                              2,
+                              3,
+                              4,
+                              5,
+                              6,
+                              7,
+                              8,
+                              9,
+                              3815)
+     AND CAB1.TIPMOV IN ('D')
+     AND CAB1.DTENTSAI >=
+       (select (TRUNC(SYSDATE, 'YEAR')) from dual)
+     AND CAB1.DTENTSAI <= :DATAFIN),0) AS "Fat_acumulado_ano",
+       nvl((SELECT SUM(cab1.vlrnota)
+   FROM TGFCAB CAB1,
+        TGFTOP TOP
+   WHERE CAB1.CODTIPOPER = TOP.CODTIPOPER
+     AND CAB1.DHTIPOPER = TOP.DHALTER
+     AND (CAB1.CODPARC = :CODPARC OR :CODPARC IS NULL)
+	 and(cab1.codvend = :codvend or :codvend is null)
+     and cab1.codparc = cab.codparc   
+     and cab1.codnat not in (1010105)
+     AND top.TIPATUALFIN = 'I'
+     AND cab1.STATUSNOTA = 'L'
+     AND top.atualfin = 1
+     AND CAB1.CODPARC NOT IN (1,
+                              2,
+                              3,
+                              4,
+                              5,
+                              6,
+                              7,
+                              8,
+                              9,
+                              3815)
+     AND CAB1.TIPMOV IN ('V')
+     AND CAB1.DTENTSAI >=
+       (select DATAINI from ad_periodos
+WHERE NUPERIODO = (SELECT NUPERIODO-12 FROM AD_PERIODOS WHERE DATAINI = :DATAINI))
+     AND CAB1.DTENTSAI <=
+      (select DATAFIN from ad_periodos
+WHERE NUPERIODO = (SELECT NUPERIODO-12 FROM AD_PERIODOS WHERE DATAINI = :DATAINI))),0)-nvl((SELECT SUM(cab1.vlrnota)
+   FROM TGFCAB CAB1,
+        TGFTOP TOP
+   WHERE CAB1.CODTIPOPER = TOP.CODTIPOPER
+     AND CAB1.DHTIPOPER = TOP.DHALTER
+     AND (CAB1.CODPARC = :CODPARC OR :CODPARC IS NULL)
+	 and(cab1.codvend = :codvend or :codvend is null)
+     and cab1.codparc = cab.codparc   
+     and cab1.codnat not in (1010105)
+     AND top.TIPATUALFIN = 'I'
+     --AND cab1.STATUSNOTA = 'L'
+     AND top.atualfin = -1
+     AND CAB1.CODPARC NOT IN (1,
+                              2,
+                              3,
+                              4,
+                              5,
+                              6,
+                              7,
+                              8,
+                              9,
+                              3815)
+     AND CAB1.TIPMOV IN ('D')
+     AND CAB1.DTENTSAI >=
+        (select DATAINI from ad_periodos
+WHERE NUPERIODO = (SELECT NUPERIODO-12 FROM AD_PERIODOS WHERE DATAINI = :DATAINI))
+     AND CAB1.DTENTSAI <=
+        (select DATAFIN from ad_periodos
+WHERE NUPERIODO = (SELECT NUPERIODO-12 FROM AD_PERIODOS WHERE DATAINI = :DATAINI))),0) AS "Fat_mes_atual_ano_anterior",
+
+nvl((SELECT SUM(cab1.vlrnota)
+   FROM TGFCAB CAB1,
+        TGFTOP TOP
+   WHERE CAB1.CODTIPOPER = TOP.CODTIPOPER
+     AND CAB1.DHTIPOPER = TOP.DHALTER
+     AND (CAB1.CODPARC = :CODPARC OR :CODPARC IS NULL)
+	 and(cab1.codvend = :codvend or :codvend is null)
+     and cab1.codparc = cab.codparc  
+     and cab1.codnat not in (1010105)
+     AND top.TIPATUALFIN = 'I'
+     AND cab1.STATUSNOTA = 'L'
+     AND top.atualfin = 1
+     AND CAB1.CODPARC NOT IN (1,
+                              2,
+                              3,
+                              4,
+                              5,
+                              6,
+                              7,
+                              8,
+                              9,
+                              3815)
+     AND CAB1.TIPMOV IN ('V')
+     AND CAB1.DTENTSAI >=  (select (TRUNC(SYSDATE-365, 'YEAR')) from dual)
+     AND CAB1.DTENTSAI <=  (select DATAFIN from ad_periodos
+WHERE NUPERIODO = (SELECT NUPERIODO-12 FROM AD_PERIODOS WHERE DATAINI = :DATAINI))),0)-nvl((SELECT SUM(cab1.vlrnota)
+   FROM TGFCAB CAB1,
+        TGFTOP TOP
+   WHERE CAB1.CODTIPOPER = TOP.CODTIPOPER
+     AND CAB1.DHTIPOPER = TOP.DHALTER
+     AND (CAB1.CODPARC = :CODPARC OR :CODPARC IS NULL)
+	 and(cab1.codvend = :codvend or :codvend is null)
+     and cab1.codparc = cab.codparc  
+     and cab1.codnat not in (1010105)
+     AND top.TIPATUALFIN = 'I'
+     --AND cab1.STATUSNOTA = 'L'
+     AND top.atualfin = -1
+     AND CAB1.CODPARC NOT IN (1,
+                              2,
+                              3,
+                              4,
+                              5,
+                              6,
+                              7,
+                              8,
+                              9,
+                              3815)
+     AND CAB1.TIPMOV IN ('D')
+     AND CAB1.DTENTSAI >=  (select (TRUNC(SYSDATE-365, 'YEAR')) from dual)
+     AND CAB1.DTENTSAI <=  (select DATAFIN from ad_periodos
+WHERE NUPERIODO = (SELECT NUPERIODO-12 FROM AD_PERIODOS WHERE DATAINI = :DATAINI))),0) AS "Fat_acumulado_ano_anterior"
+       
+        
+
+
+        
+        
+        
+        
+FROM tgfcab cab,
+     tgfpar par,
+     tgftop top,
+     tgfven ven,
+     tgfven ger,
+     tgftpp tpp
+WHERE cab.codparc = par.codparc
+  and cab.codnat not in (1010105)
+  AND ger.codvend = ven.codger
+  AND par.codvend = ven.codvend
+  and (ven.codvend = :codvend or :codvend is null)
+  AND cab.tipmov IN ('V','D')
+  AND cab.codtipoper = top.codtipoper
+  AND CAB.CODPARC NOT IN (1,
+                          2,
+                          3,
+                          4,
+                          5,
+                          6,
+                          7,
+                          8,
+                          9,
+                          3815)
+  AND TOP.BONIFICACAO = 'N'
+  AND cab.DHTIPOPER = top.DHALTER
+  AND top.TIPATUALFIN = 'I'
+  AND top.atualfin = 1
+  AND (CAB.CODPARC = :CODPARC OR :CODPARC IS NULL)
+  AND cab.dtneg >=
+    '01/01/2021'
+  AND cab.dtneg <=
+    (SELECT trunc(LAST_DAY(SYSDATE))
+     FROM DUAL) 
+AND cab.STATUSNOTA = 'L'
+and ger.codvend in (2,43,72)
+and par.codtipparc = tpp.codtipparc
+and par.codvend not in (17)
+GROUP BY par.codvend,
+         ven.apelido,
+         ger.codvend,
+         ger.apelido,
+         cab.codparc,
+         par.nomeparc,
+		 PAR.AD_METAMENSAL,
+PAR.AD_SOBREMETA,
+PAR.CODTIPPARC,
+tpp.DESCRTIPPARC
+ORDER BY "Fat_acumulado_mes" DESC
