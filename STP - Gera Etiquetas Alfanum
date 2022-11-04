@@ -1,0 +1,119 @@
+create or replace TRIGGER "AD_U_SEQALF_TRUSS"
+  before update on AD_TRASETIQUETA
+  for each row
+declare
+  -- local variables here
+
+  v_seq       varchar2(50);
+  v_ad_pallet tgfpro.ad_pallet%type;
+
+  v_zero varchar2(3);
+
+begin
+
+
+  select ad_pallet
+    into v_ad_pallet
+    from tgfpro pro
+   where pro.codprod = :new.codprod;
+
+  if length(:new.nrocaixa) = 3 then
+    v_zero := '0';
+  elsif length(:new.nrocaixa) = 2 then
+    v_zero := '00';
+  else
+    v_zero := '000';
+  end if;
+  --raise_application_error(-20101,'passou aqui :new.nrocaixa ' || v_ad_pallet );
+
+  if :new.tipoprod = 'PA' and :new.nrocaixa <= v_ad_pallet then
+    :new.seqalfanum := 'A-' || v_zero || :new.nrocaixa;
+  elsif :new.tipoprod = 'PA' and :new.nrocaixa > v_ad_pallet and
+        :new.nrocaixa <= v_ad_pallet * 2 then
+    :new.seqalfanum := 'B-' || v_zero || :new.nrocaixa;
+  elsif :new.tipoprod = 'PA' and :new.nrocaixa > v_ad_pallet * 2 and
+        :new.nrocaixa <= v_ad_pallet * 3 then
+    :new.seqalfanum := 'C-' || v_zero || :new.nrocaixa;
+  elsif :new.tipoprod = 'PA' and :new.nrocaixa > v_ad_pallet * 3 and
+        :new.nrocaixa <= v_ad_pallet * 4 then
+    :new.seqalfanum := 'D-' || v_zero || :new.nrocaixa;
+  elsif :new.tipoprod = 'PA' and :new.nrocaixa > v_ad_pallet * 4 and
+        :new.nrocaixa <= v_ad_pallet * 5 then
+    :new.seqalfanum := 'E-' || v_zero || :new.nrocaixa;
+  elsif :new.tipoprod = 'PA' and :new.nrocaixa > v_ad_pallet * 5 and
+        :new.nrocaixa <= v_ad_pallet * 6 then
+    :new.seqalfanum := 'F-' || v_zero || :new.nrocaixa;
+  elsif :new.tipoprod = 'PA' and :new.nrocaixa > v_ad_pallet * 6 and
+        :new.nrocaixa <= v_ad_pallet * 7 then
+    :new.seqalfanum := 'G-' || v_zero || :new.nrocaixa;
+  elsif :new.tipoprod = 'PA' and :new.nrocaixa > v_ad_pallet * 7 and
+        :new.nrocaixa <= v_ad_pallet * 8 then
+    :new.seqalfanum := 'H-' || v_zero || :new.nrocaixa;
+  elsif :new.tipoprod = 'PA' and :new.nrocaixa > v_ad_pallet * 8 and
+        :new.nrocaixa <= v_ad_pallet * 9 then
+    :new.seqalfanum := 'I-' || v_zero || :new.nrocaixa;
+  elsif :new.tipoprod = 'PA' and :new.nrocaixa > v_ad_pallet * 9 and
+        :new.nrocaixa <= v_ad_pallet * 10 then
+    :new.seqalfanum := 'J-' || v_zero || :new.nrocaixa;
+  elsif :new.tipoprod = 'PA' and :new.nrocaixa > v_ad_pallet * 10 and
+        :new.nrocaixa <= v_ad_pallet * 11 then
+    :new.seqalfanum := 'K-' || v_zero || :new.nrocaixa;
+  elsif :new.tipoprod = 'PA' and :new.nrocaixa > v_ad_pallet * 11 and
+        :new.nrocaixa <= v_ad_pallet * 12 then
+    :new.seqalfanum := 'L-' || v_zero || :new.nrocaixa;
+  elsif :new.tipoprod = 'PA' and :new.nrocaixa > v_ad_pallet * 12 and
+        :new.nrocaixa <= v_ad_pallet * 13 then
+    :new.seqalfanum := 'M-' || v_zero || :new.nrocaixa;
+  elsif :new.tipoprod = 'PA' and :new.nrocaixa > v_ad_pallet * 13 and
+        :new.nrocaixa <= v_ad_pallet * 14 then
+    :new.seqalfanum := 'N-' || v_zero || :new.nrocaixa;
+  elsif :new.tipoprod = 'PA' and :new.nrocaixa > v_ad_pallet * 14 and
+        :new.nrocaixa <= v_ad_pallet * 15 then
+    :new.seqalfanum := 'O-' || v_zero || :new.nrocaixa;
+  elsif :new.tipoprod = 'PA' and :new.nrocaixa > v_ad_pallet * 15 and
+        :new.nrocaixa <= v_ad_pallet * 16 then
+    :new.seqalfanum := 'P-' || v_zero || :new.nrocaixa;
+  elsif :new.tipoprod = 'PA' and :new.nrocaixa > v_ad_pallet * 16 and
+        :new.nrocaixa <= v_ad_pallet * 17 then
+    :new.seqalfanum := 'Q-' || v_zero || :new.nrocaixa;
+  elsif :new.tipoprod = 'PA' and :new.nrocaixa > v_ad_pallet * 17 and
+        :new.nrocaixa <= v_ad_pallet * 18 then
+    :new.seqalfanum := 'R-' || v_zero || :new.nrocaixa;
+  elsif :new.tipoprod = 'PAL' and :new.nrocaixa = 1 then
+    :new.seqalfanum := 'A-' || v_zero || :new.nrocaixa;
+  elsif :new.tipoprod = 'PAL' and :new.nrocaixa = 2 then
+    :new.seqalfanum := 'B-' || v_zero || :new.nrocaixa;
+  elsif :new.tipoprod = 'PAL' and :new.nrocaixa = 3 then
+    :new.seqalfanum := 'C-' || v_zero || :new.nrocaixa;
+  elsif :new.tipoprod = 'PAL' and :new.nrocaixa = 4 then
+    :new.seqalfanum := 'D-' || v_zero || :new.nrocaixa;
+  elsif :new.tipoprod = 'PAL' and :new.nrocaixa = 5 then
+    :new.seqalfanum := 'E-' || v_zero || :new.nrocaixa;
+  elsif :new.tipoprod = 'PAL' and :new.nrocaixa = 6 then
+    :new.seqalfanum := 'F-' || v_zero || :new.nrocaixa;
+  elsif :new.tipoprod = 'PAL' and :new.nrocaixa = 7 then
+    :new.seqalfanum := 'G-' || v_zero || :new.nrocaixa;
+  elsif :new.tipoprod = 'PAL' and :new.nrocaixa = 8 then
+    :new.seqalfanum := 'H-' || v_zero || :new.nrocaixa;
+  elsif :new.tipoprod = 'PAL' and :new.nrocaixa = 9 then
+    :new.seqalfanum := 'I-' || v_zero || :new.nrocaixa;
+  elsif :new.tipoprod = 'PAL' and :new.nrocaixa = 10 then
+    :new.seqalfanum := 'J-' || v_zero || :new.nrocaixa;
+  elsif :new.tipoprod = 'PAL' and :new.nrocaixa = 11 then
+    :new.seqalfanum := 'K-' || v_zero || :new.nrocaixa;
+  elsif :new.tipoprod = 'PAL' and :new.nrocaixa = 12 then
+    :new.seqalfanum := 'L-' || v_zero || :new.nrocaixa;
+  elsif :new.tipoprod = 'PAL' and :new.nrocaixa = 13 then
+    :new.seqalfanum := 'M-' || v_zero || :new.nrocaixa;
+  elsif :new.tipoprod = 'PAL' and :new.nrocaixa = 14 then
+    :new.seqalfanum := 'N-' || v_zero || :new.nrocaixa;
+  elsif :new.tipoprod = 'PAL' and :new.nrocaixa = 15 then
+    :new.seqalfanum := 'O-' || v_zero || :new.nrocaixa;
+  elsif :new.tipoprod = 'PAL' and :new.nrocaixa = 16 then
+    :new.seqalfanum := 'P-' || v_zero || :new.nrocaixa;
+  elsif :new.tipoprod = 'PAL' and :new.nrocaixa = 17 then
+    :new.seqalfanum := 'Q-' || v_zero || :new.nrocaixa;
+  
+  end if;
+
+end AD_U_SEQALF_TRUSS;
