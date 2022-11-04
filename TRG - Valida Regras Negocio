@@ -90,7 +90,7 @@ begin
     end if;
 
 
-    -- Jovem 30/06/2021
+    -- Diego 30/06/2022
     -- Mudança do Processo de Status Pedido Aprovado (não voltar o Status do Pedido Aprovado na Confirmação do Pedido)
     /*
     select count(1)
@@ -320,7 +320,7 @@ begin
       :new.ad_numconferencia := null;
       :new.ad_seqagrup       := null;
 
-      -- Jovem 30/06/2021
+      -- Diego 30/06/2022
       -- Mudança do Processo de Status Pedido Aprovado (não voltar o Status do Pedido Aprovado na Confirmação do Pedido)
       select count(1)
       into v_count
@@ -343,7 +343,7 @@ begin
                             rotina     => 'PEDIDO APROVADO AUTOMATICO',
                             nota       => :new.nunota);
       end if;
-      -- Jovem 30/06/2021
+      -- Diego 30/06/2022
       -- Mudança do Processo de Status Pedido Aprovado (não voltar o Status do Pedido Aprovado na Confirmação do Pedido)
 
 
