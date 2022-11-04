@@ -1,0 +1,144 @@
+SELECT PRO.CODPROD,
+       PRO.DESCRPROD,
+       SUM(ITE.QTDNEG) AS "TOTAL_PRODUTO",
+       SUM(ITE.QTDNEG)/
+  (SELECT SUM(ITE1.QTDNEG)
+   FROM TGFPAR PAR1,
+        TSICID CID1,
+        TSIUFS UFS1,
+        TSIPAI PAI1,
+        TGFCAB CAB1,
+        TGFITE ITE1,
+        TGFPRO PRO1,
+        TGFTOP TOP1
+   WHERE PAR1.CODCID = CID1.CODCID
+     AND UFS1.CODUF = CID1.UF
+     AND TOP1.DHALTER = CAB1.DHTIPOPER
+     AND TOP1.CODTIPOPER = CAB1.CODTIPOPER
+     AND CAB1.CODTIPOPER IN :CODTIPOPER
+     AND UFS1.CODPAIS = PAI1.CODPAIS
+     AND PAI1.CODPAIS NOT IN (0,
+                              55)
+     AND CAB1.CODPARC = PAR1.CODPARC
+     AND CAB1.NUNOTA = ITE1.NUNOTA
+     AND CAB1.STATUSNOTA = 'L'
+     AND CAB1.STATUSNFE = 'A'
+     AND (PAI1.CODPAIS = :CODPAIS
+          OR :CODPAIS IS NULL)
+     AND CAB1.TIPMOV = 'V'
+     AND PRO1.CODPROD = ITE1.CODPROD
+     AND CAB1.DTNEG >= :DTINI
+     AND CAB1.DTNEG <= :DTFIN)*100 AS "TOTAL_GERAL",
+       SUM(SUM(ITE.QTDNEG)/
+             (SELECT SUM(ITE1.QTDNEG)
+              FROM TGFPAR PAR1, TSICID CID1, TSIUFS UFS1, TSIPAI PAI1, TGFCAB CAB1, TGFITE ITE1, TGFPRO PRO1, TGFTOP TOP1
+              WHERE PAR1.CODCID = CID1.CODCID
+                AND UFS1.CODUF = CID1.UF
+                AND TOP1.DHALTER = CAB1.DHTIPOPER
+                AND TOP1.CODTIPOPER = CAB1.CODTIPOPER
+                AND CAB1.CODTIPOPER IN :CODTIPOPER
+                AND UFS1.CODPAIS = PAI1.CODPAIS
+                AND PAI1.CODPAIS NOT IN (0, 55)
+                AND CAB1.CODPARC = PAR1.CODPARC
+                AND CAB1.NUNOTA = ITE1.NUNOTA
+                AND CAB1.STATUSNOTA = 'L'
+                AND CAB1.STATUSNFE = 'A'
+                AND (PAI1.CODPAIS = :CODPAIS
+                     OR :CODPAIS IS NULL)
+                AND CAB1.TIPMOV = 'V'
+                AND PRO1.CODPROD = ITE1.CODPROD
+                AND CAB1.DTNEG >= :DTINI
+                AND CAB1.DTNEG <= :DTFIN)*100) OVER (
+                                                           ORDER BY SUM(ITE.QTDNEG) DESC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS "CURVA",
+                                                          CASE
+                                                              WHEN SUM(SUM(ITE.QTDNEG)/
+                                                                         (SELECT SUM(ITE1.QTDNEG)
+                                                                          FROM TGFPAR PAR1, TSICID CID1, TSIUFS UFS1, TSIPAI PAI1, TGFCAB CAB1, TGFITE ITE1, TGFPRO PRO1, TGFTOP TOP1
+                                                                          WHERE PAR1.CODCID = CID1.CODCID
+                                                                            AND UFS1.CODUF = CID1.UF
+                                                                            AND TOP1.DHALTER = CAB1.DHTIPOPER
+                                                                            AND TOP1.CODTIPOPER = CAB1.CODTIPOPER
+                                                                            AND CAB1.CODTIPOPER IN :CODTIPOPER
+                                                                            AND UFS1.CODPAIS = PAI1.CODPAIS
+                                                                            AND PAI1.CODPAIS NOT IN (0, 55)
+                                                                            AND CAB1.CODPARC = PAR1.CODPARC
+                                                                            AND CAB1.NUNOTA = ITE1.NUNOTA
+                                                                            AND CAB1.STATUSNOTA = 'L'
+                                                                            AND CAB1.STATUSNFE = 'A'
+                                                                            AND (PAI1.CODPAIS = :CODPAIS
+                                                                                 OR :CODPAIS IS NULL)
+                                                                            AND CAB1.TIPMOV = 'V'
+                                                                            AND PRO1.CODPROD = ITE1.CODPROD
+                                                                            AND CAB1.DTNEG >= :DTINI
+                                                                            AND CAB1.DTNEG <= :DTFIN)*100) OVER (
+                                                                                                                       ORDER BY SUM(ITE.QTDNEG) DESC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) <= '79,99' THEN 'A'
+                                                              WHEN SUM(SUM(ITE.QTDNEG)/
+                                                                         (SELECT SUM(ITE1.QTDNEG)
+                                                                          FROM TGFPAR PAR1, TSICID CID1, TSIUFS UFS1, TSIPAI PAI1, TGFCAB CAB1, TGFITE ITE1, TGFPRO PRO1, TGFTOP TOP1
+                                                                          WHERE PAR1.CODCID = CID1.CODCID
+                                                                            AND UFS1.CODUF = CID1.UF
+                                                                            AND TOP1.DHALTER = CAB1.DHTIPOPER
+                                                                            AND TOP1.CODTIPOPER = CAB1.CODTIPOPER
+                                                                            AND CAB1.CODTIPOPER IN :CODTIPOPER
+                                                                            AND UFS1.CODPAIS = PAI1.CODPAIS
+                                                                            AND PAI1.CODPAIS NOT IN (0, 55)
+                                                                            AND CAB1.CODPARC = PAR1.CODPARC
+                                                                            AND CAB1.NUNOTA = ITE1.NUNOTA
+                                                                            AND CAB1.STATUSNOTA = 'L'
+                                                                            AND CAB1.STATUSNFE = 'A'
+                                                                            AND (PAI1.CODPAIS = :CODPAIS
+                                                                                 OR :CODPAIS IS NULL)
+                                                                            AND CAB1.TIPMOV = 'V'
+                                                                            AND PRO1.CODPROD = ITE1.CODPROD
+                                                                            AND CAB1.DTNEG >= :DTINI
+                                                                            AND CAB1.DTNEG <= :DTFIN)*100) OVER (
+                                                                                                                       ORDER BY SUM(ITE.QTDNEG) DESC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) >= '80'
+                                                                   AND SUM(SUM(ITE.QTDNEG)/
+                                                                             (SELECT SUM(ITE1.QTDNEG)
+                                                                              FROM TGFPAR PAR1, TSICID CID1, TSIUFS UFS1, TSIPAI PAI1, TGFCAB CAB1, TGFITE ITE1, TGFPRO PRO1, TGFTOP TOP1
+                                                                              WHERE PAR1.CODCID = CID1.CODCID
+                                                                                AND UFS1.CODUF = CID1.UF
+                                                                                AND TOP1.DHALTER = CAB1.DHTIPOPER
+                                                                                AND TOP1.CODTIPOPER = CAB1.CODTIPOPER
+                                                                                AND CAB1.CODTIPOPER IN :CODTIPOPER
+                                                                                AND UFS1.CODPAIS = PAI1.CODPAIS
+                                                                                AND PAI1.CODPAIS NOT IN (0, 55)
+                                                                                AND CAB1.CODPARC = PAR1.CODPARC
+                                                                                AND CAB1.NUNOTA = ITE1.NUNOTA
+                                                                                AND CAB1.STATUSNOTA = 'L'
+                                                                                AND CAB1.STATUSNFE = 'A'
+                                                                                AND (PAI1.CODPAIS = :CODPAIS
+                                                                                     OR :CODPAIS IS NULL)
+                                                                                AND CAB1.TIPMOV = 'V'
+                                                                                AND PRO1.CODPROD = ITE1.CODPROD
+                                                                                AND CAB1.DTNEG >= :DTINI
+                                                                                AND CAB1.DTNEG <= :DTFIN)*100) OVER (
+                                                                                                                           ORDER BY SUM(ITE.QTDNEG) DESC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) <= '94,99' THEN 'B'
+                                                              ELSE 'C'
+                                                          END "ABC"
+FROM TGFPAR PAR,
+     TSICID CID,
+     TSIUFS UFS,
+     TSIPAI PAI,
+     TGFCAB CAB,
+     TGFITE ITE,
+     TGFPRO PRO
+WHERE PAR.CODCID = CID.CODCID
+  AND UFS.CODUF = CID.UF
+  AND UFS.CODPAIS = PAI.CODPAIS
+  AND PAI.CODPAIS NOT IN (0,
+                          55)
+  AND CAB.CODPARC = PAR.CODPARC
+  AND CAB.NUNOTA = ITE.NUNOTA
+  AND CAB.TIPMOV = 'V'
+  AND (PAI.CODPAIS = :CODPAIS
+       OR :CODPAIS IS NULL)
+  AND CAB.STATUSNFE = 'A'
+  AND PRO.CODPROD = ITE.CODPROD
+  AND cab.STATUSNOTA = 'L'
+  AND CAB.DTNEG >= :DTINI
+  AND CAB.DTNEG <= :DTFIN
+  AND CAB.CODTIPOPER IN :CODTIPOPER
+GROUP BY PRO.CODPROD,
+         PRO.DESCRPROD,
+         ITE.CODPROD
