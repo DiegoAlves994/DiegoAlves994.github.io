@@ -1,0 +1,120 @@
+create or replace PROCEDURE "AD_STP_KARDEX" 
+      
+is
+/*----------------------------------------------------------------------------------------------------
+  %proposito:   Inserir o registro de estoque diário na tabela 
+  %observacao:   foi incluido nas ações agendadas para ser executado todo dia as 22 hrs
+  %historia:
+  * 01.00.0 22/08/2022 Diego.Alves
+  - versao inicial
+  ----------------------------------------------------------------------------------------------------*/
+  V_NUKARDEX NUMBER;
+  V_VALIDA NUMBER;
+
+BEGIN
+
+
+SELECT MAX(NUREG)+1
+INTO V_NUKARDEX 
+FROM AD_KARDEX;
+
+SELECT COUNT(1)
+INTO V_VALIDA
+FROM AD_KARDEX 
+WHERE DATAEST = trunc(SYSDATE)
+AND CODEMP = 1; /*AJUSTAR PARA VIRADA*/
+
+IF V_VALIDA <=0 THEN 
+insert into AD_KARDEX (NUREG, CODEMP, DATAEST) VALUES (V_NUKARDEX,1, trunc(SYSDATE));
+COMMIT;
+
+
+
+
+FOR EMP_1 IN (SELECT TAB.CODEMP, TAB.CODPROD, TAB.DESCRPROD, 
+       TAB.CODVOL, TAB.USOPROD,
+       TAB.CUSTO_MED_UNIT,
+       SUM(TAB.ESTOQUE) ESTOQUE,
+        nvl((TAB.RESERVADO),0) RESERVADO
+FROM (
+
+ SELECT ITE.CODEMP,
+        ITE.CODPROD,
+        PRO.DESCRPROD,
+        PRO.USOPROD,
+        PRO.CODVOL,
+        ITE.CODLOCALORIG,
+        LOC.DESCRLOCAL,
+        ITE.CONTROLE,
+        sum(ITE.QTDNEG * ITE.ATUALESTOQUE) ESTOQUE,
+        (SELECT SUM(EST.RESERVADO  )
+         FROM TGFEST EST
+         WHERE  EST.CODPROD(+)       = ITE.CODPROD
+                 AND EST.CODEMP(+)   = ITE.CODEMP         
+                 ) AS RESERVADO,
+
+        NVL((SELECT AVG(CUSSEMICM)
+             FROM TGFCUS
+            WHERE CODPROD = ITE.CODPROD
+              AND CODEMP  in (1)
+              AND DTATUAL = (SELECT MAX(DTATUAL)
+                               FROM TGFCUS
+                              WHERE CODPROD = ITE.CODPROD
+                                AND CODEMP  in (1)
+                                AND DTATUAL <= sysdate)),
+           0) AS CUSTO_MED_UNIT
+
+ FROM TGFITE ITE, TGFCAB CAB, TGFTOP TPO, TGFPRO PRO,  TGFLOC LOC
+ WHERE CAB.CODTIPOPER   = TPO.CODTIPOPER
+ AND CAB.DHTIPOPER      = TPO.DHALTER
+ and CAB.NUNOTA         = ITE.NUNOTA
+ AND CAB.CODEMP         = ITE.CODEMP
+ AND ITE.CODPROD        = PRO.CODPROD
+ AND ITE.CODLOCALORIG   = LOC.CODLOCAL
+ AND ITE.RESERVA      = 'N'
+ AND (ITE.ATUALESTOQUE <> 0 )
+ AND CAB.TIPMOV <> 'P'
+ AND CAB.DTENTSAI <= SYSDATE
+ AND ITE.CODEMP = 1
+
+
+
+ GROUP BY ITE.CODEMP,
+        ITE.CODPROD,
+        PRO.DESCRPROD,
+        PRO.USOPROD,
+        PRO.CODVOL,
+        ITE.CODLOCALORIG,
+        LOC.DESCRLOCAL,
+        ITE.CONTROLE
+
+
+        ) TAB
+
+GROUP BY TAB.CODEMP, TAB.CODPROD, TAB.DESCRPROD, 
+       TAB.CODVOL, TAB.USOPROD,
+       TAB.CUSTO_MED_UNIT, TAB.RESERVADO
+
+ORDER BY tab.codemp,TAB.CODPROD)
+LOOP
+INSERT INTO AD_KARDEXITE (
+NUREG,
+CODEMP,
+CODPROD,
+DESCRPROD,
+CODVOL,
+USOPROD,
+CUSTOMEDUNIT,
+ESTOQUE,
+RESERVADO) values (V_NUKARDEX,EMP_1.CODEMP, EMP_1.CODPROD, EMP_1.DESCRPROD, EMP_1.CODVOL, EMP_1.USOPROD,EMP_1.CUSTO_MED_UNIT,EMP_1.ESTOQUE,EMP_1.RESERVADO);
+commit;
+END LOOP;
+
+END IF;
+
+
+
+
+
+
+END;
