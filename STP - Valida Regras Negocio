@@ -1,0 +1,693 @@
+create or replace TRIGGER AD_TRG_IU_TGFCAB_TRUSS
+BEFORE INSERT OR UPDATE
+ON TGFCAB
+REFERENCING NEW AS NEW OLD AS OLD
+FOR EACH ROW
+declare
+  -- local variables here
+  v_count      int;
+  v_count2     int;
+  v_counthomol int;
+  v_ultcod     int;
+
+  v_obsped  tgfcab.observacao%type;
+  v_countusu int;
+  V_OBSNSF   TGFPAR.AD_OBSNF%TYPE;
+
+  v_vlrpedido tgfcab.vlrnota%type;
+
+  v_counttoproyalties int := 0;
+
+  v_codtipparc tgftpp.codtipparc%type;
+
+  V_AD_PRIORIDADE TGFCAB.AD_PRIORIDADE%TYPE;
+
+  /*Aviso devolução*/
+  V_NUAVISO   TSIAVI.NUAVISO%TYPE;
+  V_DESCRICAO CLOB;
+  v_nomeparc  tgfpar.nomeparc%type;
+
+  v_codprom ad_tprom.codprom%type;
+
+  v_dtfinfat ad_tprom.dtfinfat%type;
+
+  v_ciffob  tgfpar.ad_ciffob%type;
+  v_topecom tgfpar.ad_topecom%type;
+  v_dhalter tgftop.dhalter%type;
+
+  v_codtipvenda tgfpar.ad_codtipvenda%type;
+  v_dhaltetipvenda TGFTPV.Dhalter%type;
+
+  v_naturezacorreios tgfpar.ad_naturezacorreios%type;
+
+--   pragma autonomous_transaction;
+  V_PROCED VARCHAR2(100);
+  V_GRUPO  tgftop.grupo%type;
+  V_TIPNAT  tgfnat.tipnat%type;
+  V_OBSERVACAO  TGFCAB.Observacao%type;
+  V_OBSPED2         tgfcab.observacao%type; 
+  P_CONTADOR         NUMBER(10) := 0;      
+  V_HIST          TGFFIN.HISTORICO%TYPE; 
+  V_TIPMOV        TGFCAB.TIPMOV%TYPE;
+  V_DESCRNAT      TGFNAT.DESCRNAT%TYPE;
+  V_UF            TSIUFS.UF%TYPE;
+  
+  -- ATUALIZA PARCEIRO DESTINATARIO
+  VCODPARCDEST TGFCAB.CODPARCDEST%TYPE;
+
+begin
+
+  if :new.tipmov = 'P' and not :new.codtipoper in (3099,3096,3094) then
+
+    if inserting and :new.tipmov = 'P' and :new.ad_statusped is null and :new.ad_nunota is null then
+
+      :new.ad_statusped      := 1;
+      :new.ad_numconferencia := null;
+      stp_logstatus_truss(alteracoes => 'STATUS 1 - COTAÇÃO',
+                          rotina     => 'INCLUSÃO DO PEDIDO',
+                          nota       => :new.nunota);
+
+    end if;
+
+    if inserting and :new.tipmov = 'V' then
+      :new.ad_numconferencia := null;
+    end if;
+
+    select count(1)
+      into v_count
+      from ad_centralparamtop t
+     where t.nupar = 1
+       and t.codtipoper = :new.codtipoper
+       and t.entaprov = 'N';
+
+    if :new.statusnota = 'L' and :old.statusnota != 'L' and
+       nvl(:new.ad_statusped, 0) = 1 and v_count > 0 then
+
+      raise_application_error(-20101,
+                              fc_formatahtml(p_mensagem => 'Pedido não pode ser confirmado',
+                                             p_motivo   => 'Pedido ainda não conferido no comercial',
+                                             p_solucao  => 'Aguarde a liberação de conferencia do comercial'));
+    end if;
+
+
+    -- Jovem 30/06/2021
+    -- Mudança do Processo de Status Pedido Aprovado (não voltar o Status do Pedido Aprovado na Confirmação do Pedido)
+    /*
+    select count(1)
+      into v_count
+      from ad_centralparamtop t
+     where t.nupar = 1
+       and t.codtipoper = :new.codtipoper
+       and t.entaprov = 'S';
+
+    SELECT COUNT(1)
+      INTO v_count2
+      FROM TGFPAR PAR
+     WHERE PAR.CODPARC = :NEW.CODPARC
+       AND :NEW.TIPMOV = 'P'
+       AND PAR.AD_REGRAANALISECRED = 'A';
+
+    if :new.statusnota = 'L' and :old.statusnota != 'L' and (v_count > 0 OR v_count2 > 0) then
+      :new.ad_statusped := 4;
+
+      stp_logstatus_truss(alteracoes => 'STATUS 4 - Pedido Aprovado',
+                          rotina     => 'PEDIDO APROVADO AUTOMATICO',
+                          nota       => :new.nunota);
+    end if;
+    */
+
+   if :new.AD_STATUSPED IS NOT NULL AND :new.AD_STATUSPED<>:OLD.AD_STATUSPED THEN
+        INSERT INTO AD_STATUSPEDIDO VALUES(:NEW.NUNOTA,SYSDATE,:NEW.AD_STATUSPED);
+    END IF;
+
+  if :new.statusnota = 'L' and :old.statusnota != 'L' then
+
+      select count(1)
+        into v_count
+        from ad_centralparamtop t
+       where t.nupar = 1
+         and t.codtipoper = :new.codtipoper;
+
+      select count(1)
+        into v_countusu
+        from ad_centralparamusu u
+       where u.nupar = 1
+         and u.codusu = stp_get_codusulogado;
+
+      if v_countusu = 0 and v_count > 0 then
+
+        raise_application_error(-20101,
+                                fc_formatahtml(p_mensagem => 'Não é possivel confirmar',
+                                               p_motivo   => 'Sem permissão de acesso',
+                                               p_solucao  => 'Confirmação de pedido é realizado por usuários do setor financeiro'));
+
+      end if;
+    end if;
+
+    if inserting and v_count > 0 then
+      :new.ad_statusroyal := 0;
+    end if;
+
+    /*if :new.statusnota = 'L' and :old.statusnota != 'L' and
+       :old.ad_statusped = 2 then
+      :new.ad_statusped := 3;
+
+      stp_logstatus_truss(alteracoes => 'STATUS 3 - Pedido Confirmado',
+                          rotina     => 'CONFIRMAÇÃO DO PEDIDO',
+                          nota       => :new.nunota);
+    end if;*/
+--ALTERAÇÃO REALIZADA POR DIEGO.ALVES 25/04/2022. COMENTADO A PEDIDO DE ANDRÉ...POIS NÃO IRÁ EXISTIR MAIS O STATUS 3, DE ACORDO COM NOVO PLANEJAMENTO.
+
+
+    if :new.ad_statusped = 5 then
+
+      stp_logstatus_truss(alteracoes => 'STATUS 5 - Em Separação',
+                          rotina     => 'Conferência Expedição',
+                          nota       => :new.nunota);
+    end if;
+
+    if :new.ad_statusped = 6 then
+      stp_logstatus_truss(alteracoes => 'STATUS 6 - Pedido Separado',
+                          rotina     => 'Conclusão Conferência Expedição',
+                          nota       => :new.nunota);
+    end if;
+
+    if :new.pendente = 'N' and :old.pendente != 'N' and :new.tipmov = 'P' then
+
+      :new.ad_statusped := 8;
+      stp_logstatus_truss(alteracoes => 'STATUS 8 - Faturado',
+                          rotina     => 'Faturamento do pedido',
+                          nota       => :new.nunota);
+    end if;
+
+    if :new.pendente = 'S' and :old.pendente = 'N' and :new.tipmov = 'P' and
+       :new.ad_statusped = 8 then
+
+      :new.ad_statusped := 7;
+      stp_logstatus_truss(alteracoes => 'STATUS 7 - Liberado Faturamento',
+                          rotina     => 'Nota cancelada, faturar pedido novamente',
+                          nota       => :new.nunota);
+    end if;
+
+
+    if :new.statusnota = 'L' and :old.statusnota != 'L' then
+
+      select count(1)
+        into v_count
+        from ad_centralparamtop p
+       where p.nupar = 2
+         and p.codtipoper = :new.codtipoper;
+
+      if v_count > 0 then
+
+        select count(1)
+          into v_counthomol
+          from tgfpar p
+         where p.codparc = :new.codparc
+           and (nvl(p.ad_homolo, 'N') != 'S' or
+               trunc(nvl(p.ad_dtval, sysdate)) <= trunc(sysdate));
+
+        if v_counthomol > 0 then
+
+          raise_application_error(-20101,
+                                  fc_formatahtml(p_mensagem => 'Não é possivel confirmar',
+                                                 p_motivo   => 'Parceiro não homologado',
+                                                 p_solucao  => 'Entre no cadastro do parceiro, ou solicite o setor responsavél, para realizar a marcação do parceiro como homologado'));
+        end if;
+
+      end if;
+
+    end if;
+
+    if inserting and (:new.tipmov = 'V') THEN
+
+      SELECT P.AD_OBSNF
+        INTO V_OBSNSF
+        FROM TGFPAR P
+       WHERE P.CODPARC = :NEW.CODPARC;
+
+      :NEW.OBSERVACAO :=  :NEW.OBSERVACAO ||  V_OBSNSF;
+
+      :new.ad_statusped      := 1;
+      :new.ad_numconferencia := null;
+
+    END IF;
+
+-- Preenchimento do campo Tipo de negociação
+
+    if inserting and (:new.tipmov = 'P') then
+
+        SELECT P.ad_codtipvenda
+        INTO v_codtipvenda
+        FROM TGFPAR P
+       WHERE P.CODPARC = :NEW.CODPARC;
+
+      if (v_codtipvenda != '') or (not v_codtipvenda is null) then
+
+         select MAX(P.DHALTER)
+         into v_dhaltetipvenda
+         from TGFTPV P
+         where codtipvenda = v_codtipvenda;
+
+        :NEW.CODTIPVENDA := v_codtipvenda;
+        :NEW.Dhtipvenda := v_dhaltetipvenda;
+
+      end if;
+
+    end if;
+
+    --Ajuste de Campo CIF ou FOB Pedido Site
+    if inserting and (:new.tipmov = 'P') and (not :new.ad_nunota is null) THEN
+
+      SELECT P.ad_ciffob
+        INTO v_ciffob
+        FROM TGFPAR P
+       WHERE P.CODPARC = :NEW.CODPARC;
+
+      if v_ciffob != '' then
+        :NEW.CIF_FOB := v_ciffob;
+      end if;
+    END IF;
+
+    --Ajuste de Campo TOP Pedido Site
+    if inserting and (:new.tipmov = 'P') and (not :new.ad_nunota is null) and (:new.codemp = 1) THEN
+
+      SELECT P.ad_topecom
+        INTO v_topecom
+        FROM TGFPAR P
+       WHERE P.CODPARC = :NEW.CODPARC;
+
+      if (v_topecom != '') or (not v_topecom is null) then
+        SELECT MAX(DHALTER) DHALTER
+        into v_dhalter
+        FROM TGFTOP
+        WHERE CODTIPOPER = v_topecom
+        GROUP BY CODTIPOPER;
+
+        :NEW.CODTIPOPER := v_topecom;
+        :NEW.DHTIPOPER := v_dhalter;
+      end if;
+
+      :NEW.AD_CODNATCORREIOS := '2010125';
+
+    END IF;
+
+
+      --Ajuste de Campo Natureza pedido correios
+    if inserting and (:new.tipmov = 'P') THEN
+
+      SELECT P.AD_NATUREZACORREIOS
+        INTO v_naturezacorreios
+        FROM TGFPAR P
+       WHERE P.CODPARC = :NEW.CODPARC;
+
+      if v_naturezacorreios != '' then
+        :NEW.AD_CODNATCORREIOS := v_naturezacorreios;
+      end if;
+    END IF;
+
+    if inserting and (:new.tipmov = 'P') THEN
+
+
+      SELECT NVL(P.AD_OBSNF,' ')
+      INTO V_OBSNSF
+      FROM TGFPAR P
+      WHERE P.CODPARC = :NEW.CODPARC;
+
+      :NEW.OBSERVACAO := :NEW.OBSERVACAO || V_OBSNSF;
+
+      :new.ad_statusped      := 1;
+      :new.ad_numconferencia := null;
+      :new.ad_seqagrup       := null;
+
+      -- Jovem 30/06/2021
+      -- Mudança do Processo de Status Pedido Aprovado (não voltar o Status do Pedido Aprovado na Confirmação do Pedido)
+      select count(1)
+      into v_count
+      from ad_centralparamtop t
+      where t.nupar = 1
+      and t.codtipoper = :new.codtipoper
+      and t.entaprov = 'S';
+
+      SELECT COUNT(1)
+      INTO v_count2
+      FROM TGFPAR PAR
+      WHERE PAR.CODPARC = :NEW.CODPARC
+      AND :NEW.TIPMOV = 'P'
+      AND PAR.AD_REGRAANALISECRED = 'A';
+
+      if v_count > 0 AND v_count2 > 0 then
+        :new.ad_statusped := 4;
+
+        stp_logstatus_truss(alteracoes => 'STATUS 4 - Pedido Aprovado',
+                            rotina     => 'PEDIDO APROVADO AUTOMATICO',
+                            nota       => :new.nunota);
+      end if;
+      -- Jovem 30/06/2021
+      -- Mudança do Processo de Status Pedido Aprovado (não voltar o Status do Pedido Aprovado na Confirmação do Pedido)
+
+
+    END IF;
+
+    if :new.statusnota = 'L' and :old.statusnota != 'L' then
+      :new.AD_DHCONFIRM := sysdate;
+
+      :new.ad_perc := round(((:new.vlrnota /
+                            (:new.ad_vlrped + :new.vlrnota)) * 100),
+                            2);
+    end if;
+
+    select count(1)
+      into v_counttoproyalties
+      from ad_centralparamtop top
+     where top.codtipoper = :new.codtipoper
+       and top.nupar = 4;
+
+    if v_counttoproyalties = 0 and :new.ad_statusroyal = 1 and
+       :new.tipmov = 'P' then
+      raise_application_error(-20101,
+                              fc_formatahtml(p_mensagem => 'Não é possivel gerar Royalties: Nr. Unico: ' ||
+                                                           :new.nunota,
+                                             p_motivo   => 'Movimento não autorizado a geração de royalties',
+                                             p_solucao  => 'Entre em contato com a TI'));
+
+    end if;
+
+    /*LEVAR O PERFIL DO PARCEIRO PARA O LANÇAMENTO*/
+    if inserting then
+      select par.codtipparc
+        into v_codtipparc
+        from tgfpar par
+       where par.codparc = :new.codparc;
+
+      IF v_codtipparc > 0 THEN
+        SELECT NVL(TPP.AD_PRIORIDADE, 'F')
+          INTO V_AD_PRIORIDADE
+          FROM TGFTPP TPP
+         WHERE TPP.CODTIPPARC = v_codtipparc;
+        :NEW.AD_PRIORIDADE := V_AD_PRIORIDADE;
+      ELSE
+        :NEW.AD_PRIORIDADE := 'F';
+      END IF;
+
+      :new.ad_codtipparc := v_codtipparc;
+    end if;
+
+    /*limpar ad_statusped para movimento diferente de pedido*/
+    if :new.tipmov != 'P' then
+      :new.ad_statusped := '';
+    end if;
+
+  end if;
+
+  /*if :new.statusnota = 'L' and :old.statusnota != 'L' and
+     :new.codtipoper = 3118 then
+
+
+    :new.ad_perc := (v_vlrpedido - :new.vlrnota) / :new.vlrnota;
+
+  end if;*/
+
+  /*if :new.statusnota = 'L' and :old.statusnota != 'L' and :new.tipmov = 'C' then
+
+    for c1 in (select * from tgfite i where i.nunota = :new.nunota) loop
+
+      select n.ultcod + 1
+        into v_ultcod
+        from tgfnum n
+       where n.arquivo = 'AD_TRASETIQUETA';
+
+      insert into AD_TRASETIQUETA
+        (CODETIQ, CODPROD, TIPOPROD, CONTROLE, SITUACAO, )
+      values
+        (v_ultcod, c1.codprod, 'MP', c1.controle, 'NAO');
+
+      update tgfnum n set n.ultcod = v_ultcod where n.arquivo = 'AD_TRASETIQUETA';
+
+    end loop;
+
+  end if;*/
+
+  /*  if :new.codparc != :old.codparc then
+    update tgfite ite set ite.qtdneg   = ite.qtdneg  *1 where ite.nunota = :new.nunota;
+  end if; */
+
+  --limpa nucomf ao insertir
+  if inserting and :new.tipmov = 'P' then
+    :new.ad_numconferencia := null;
+  end if;
+
+  if inserting and (:NEW.CODTIPOPER = 3094) then
+    :new.ad_statusped := 13;
+  END IF;
+
+  if :new.tipmov = 'D' and :new.statusnota = 'L' and :old.statusnota != 'L' then
+
+    FOR BI IN (select *
+                 from tsiusu usu
+                where nvl(usu.ad_notificadev, 'N') = 'S') LOOP
+
+      SELECT MAX(NUAVISO) + 1 INTO V_NUAVISO FROM TSIAVI;
+
+      select par.nomeparc
+        into v_nomeparc
+        from tgfpar par
+       where par.codparc = :new.codparc;
+
+      V_DESCRICAO := '<b>Nr Aviso:</b> ' || TO_CHAR(V_NUAVISO) ||
+                     TO_CHAR(v_nomeparc) || '<br/>' || '<b>Nota:</b> '
+
+                     || '<br/>' || '<b>Nr Unico:</b> ' ||
+                     TO_CHAR(:new.nunota) || '<br/>' || '<b>Cliente:</b> ' ||
+                     TO_CHAR(:new.numnota) || '<br/>' || '<br/>' ||
+                     '<a title="Link para Central de Notas" href="#app/' ||
+                     UTL_RAW.cast_to_varchar2(UTL_ENCODE.base64_encode(UTL_RAW.cast_to_raw('br.com.sankhya.com.mov.CentralNotas'))) || '/' ||
+                     UTL_RAW.cast_to_varchar2(UTL_ENCODE.base64_encode(UTL_RAW.cast_to_raw('{"NUNOTA":' ||
+                                                                                           TO_CHAR(:new.nunota) || '}'))) || '"' ||
+                     '>Link para Central de Notas</a>';
+
+      INSERT INTO TSIAVI
+        (NUAVISO,
+         TITULO,
+         DESCRICAO,
+         SOLUCAO,
+         IDENTIFICADOR,
+         IMPORTANCIA,
+         CODUSU,
+         CODGRUPO,
+         TIPO,
+         DHCRIACAO,
+         CODUSUREMETENTE,
+         NUAVISOPAI,
+         DTEXPIRACAO,
+         DTNOTIFICACAO,
+         ORDEM)
+      VALUES
+        (V_NUAVISO, --NUAVISO
+         'DEVOLUÇÃO DE VENDA', --TITULO
+         V_DESCRICAO, --DESCRICAO
+         '', --SOLUCAO
+         'PERSONALIZADO', --IDENTIFICADOR
+         3, --IMPORTANCIA
+         BI.CODUSU, --CODUSU
+         '', --CODGRUPO
+         'P', --TIPO
+         SYSDATE, --DHCRIACAO
+         STP_GET_CODUSULOGADO(), --CODUSUREMETENTE
+         '', --NUAVISOPAI,
+         '', --DTEXPIRACAO
+         '', --DTNOTIFICAO
+         ''); --ORDEM
+    END LOOP;
+  end if;
+
+   /*** verifica se é necessario informar o projeto ***/
+    IF (:NEW.CODPROJ = 0) AND (:NEW.CODCENCUS IN ('10401', '10601','10904', '10901' )) AND (:NEW.CODTIPOPER IN (2016, 2018))  THEN
+         raise_application_error(-20101,
+                              fc_formatahtml(p_mensagem => ' Projeto deve ser informado, para este centro de custo !!!!' ||
+                                                           :new.codcencus,
+                                             p_motivo   => 'Obrigatório.',
+                                             p_solucao  => 'Informe um projeto.'));
+
+    END IF;
+
+
+
+  if (:NEW.CODNAT > 0  AND :NEW.CODTIPOPER >0 ) then
+
+
+
+
+  /* VALIDAR SE A NATUREZA UTILIZADA NO LANÇAMENTO É COMPATIVEL COM TOP ****/ 
+    select distinct grupo , tipmov
+    into V_GRUPO, V_TIPMOV
+    from tgftop 
+    where codtipoper =:NEW.CODTIPOPER
+    and    dhalter   =:NEW.DHTIPOPER;
+
+
+
+
+    IF (:NEW.CODNAT = '3010112' AND  V_GRUPO <> 'Transferencia' and :NEW.CODTIPOPER not in  ('3300', '2309' )  ) THEN
+
+      raise_application_error(-20101,
+                              fc_formatahtml(p_mensagem => 'Não é possivel utilizar a natureza de Transferencia  com a top :' ||
+                                                           :new.codtipoper,
+                                              p_motivo   => 'Natureza :' || :NEW.CODNAT ,
+                                              p_solucao  => 'Altere a top ou a natureza.'));
+
+
+    END IF;
+
+    /****  Validar se o tipo de negociação está de acordo com o parceiro */
+
+    /**IF :NEW.TIPMOV = 'P' AND :NEW.CODNAT = '1010101' THEN 
+      select tsiufs.uf into V_UF 
+      from  tgfpar, tsicid, tsiufs
+      where tgfpar.codcid = tsicid.codcid
+      and   tsicid.uf = tsiufs.coduf
+      and   tgfpar.codparc = :NEW.CODPARC;
+
+      IF V_UF = 'SP' and :NEW.CODTIPVENDA <> 54 THEN 
+          raise_application_error(-20101,
+                              fc_formatahtml(p_mensagem => 'Tipo de Negociação não pode ser usado para esse parceiro.' ,
+                                              p_motivo   => 'Parceiro do Estado de SP.'  ,
+                                              p_solucao  => 'Altere o tipo de negociação para 54.')); 
+
+     END IF;
+
+      IF V_UF <> 'SP' and :NEW.CODTIPVENDA <> 5 THEN 
+          raise_application_error(-20101,
+                              fc_formatahtml(p_mensagem => 'Tipo de Negociação não pode ser usado para esse parceiro.' ,
+                                              p_motivo   => 'Parceiro de fora do estado de SP.'  ,
+                                              p_solucao  => 'Altere o tipo de negociação para 5.'));
+
+      END IF;
+    END IF;**/ 
+
+    /**** VALIDAR SE A NATUREZA ESTÁ COMPATIVEL COM A TOP ***/
+    SELECT distinct TIPNAT , DESCRNAT
+    into V_TIPNAT, V_DESCRNAT
+    FROM TGFNAT WHERE CODNAT =:NEW.CODNAT;
+
+    /* SE O TIPO FOR DEVOLUÇÃO DE VENDA  A NATUREZA TEM QUE SER TB DEVOLUÇÃO 
+    IF (V_TIPMOV = 'D') AND (V_DESCRNAT LIKE '%VENDA%' )   THEN
+
+      raise_application_error(-20101,
+                              fc_formatahtml(p_mensagem => 'Não é possivel utilizar a natureza de venda  com a top  de devolução :' ||
+                                                           :new.codtipoper,
+                                              p_motivo   => 'Natureza :' || :NEW.CODNAT ,
+                                              p_solucao  => 'Altere a top ou a natureza.'));
+
+    END IF; */
+
+
+    If  V_TIPNAT is not null then 
+        IF V_GRUPO IN ('Compras')  AND V_TIPNAT = 'R' THEN
+            raise_application_error(-20101,
+                                  fc_formatahtml(p_mensagem => 'Não é possivel utilizar a natureza de RECEITA  com a top :' ||
+                                                               :new.codtipoper,
+                                                 p_motivo   => 'Natureza :' || :NEW.CODNAT ,
+                                                 p_solucao  => 'Altere a top ou a natureza.'  ));
+         END IF;
+
+         IF V_GRUPO IN ('Vendas')  AND V_TIPNAT = 'D' THEN
+              raise_application_error(-20101,
+                                    fc_formatahtml(p_mensagem => 'Não é possivel utilizar a natureza de DESPESA  com a top :' ||
+                                                                 :new.codtipoper,
+                                                   p_motivo   => 'Natureza :' || :NEW.CODNAT ,
+                                                   p_solucao  => 'Altere a top ou a natureza.'));
+        END IF;
+     end if;    
+
+  end if;    
+
+  /**** GRAVA NO LANÇAMENTO FINANCEIRO A OBSERVAÇÃO DO PEDIDO ****/
+
+  If ( UPDATING  ) AND  ( :new.tipmov = 'P') THEN 
+
+      SELECT COUNT(1) INTO P_CONTADOR
+      FROM TGFFIN
+      WHERE NUNOTA =:NEW.NUNOTA
+      AND   CODEMP =:NEW.CODEMP;
+
+     IF P_CONTADOR > 0 THEN
+
+        UPDATE TGFFIN 
+        SET TGFFIN.AD_OBSERVACAO = :NEW.OBSERVACAO,
+            TGFFIN.HISTORICO     = substr(:NEW.OBSERVACAO,1, 250)
+        WHERE NUNOTA = :NEW.NUNOTA
+        AND   CODEMP =:NEW.CODEMP;
+
+     END IF;
+   END IF;
+
+
+
+  IF :NEW.CODTIPOPER IN (2208, 2219, 2214, 2211) THEN
+
+  /*   SELECT DISINTCT TGFCAB.CODPARCDEST INTO VCODPARCDEST
+     FROM TGFCAB
+     WHERE NUNOTA = :NEW.NUNOTA AND CODEMP = :NEW.CODEMP AND ROWNUM = 1;  
+  */   
+     IF :NEW.CODPARCDEST IS NOT NULL THEN
+         UPDATE TGFFIN 
+         SET CODPARC = :NEW.CODPARCDEST
+         WHERE NUMNOTA = :NEW.NUNOTA AND CODEMP = :NEW.CODEMP;
+     END IF;    
+  
+  END IF;
+
+
+   
+   /*** Verifica se o pedido é da Truss corp e a forma de pagamento 21 *** SE VENDA PARA MERCADO EXTERNO ***/
+   /* IF :NEW.TIPMOV = 'P' AND  :NEW.CODNAT = '1010103' AND :NEW.CODPARC = 9 THEN 
+      IF   (:NEW.CODTIPVENDA NOT IN ( 21 , 55) ) THEN
+        raise_application_error(-20101,
+                                    fc_formatahtml(p_mensagem => 'Tipo de negociação inconsistente.',
+                                                 p_motivo   => 'Tipo de negociação :' || :NEW.CODTIPVENDA ,
+                                                   p_solucao  => 'Para o parceiro Truss Corp, deve ser usado o tipo de negociação 21 or 55'));
+      END IF;
+    END IF;
+  */
+
+
+  /*verifica data de faturamento comparando com a promoção*/
+
+  if :new.pendente = 'N' and :old.pendente != 'N' and :new.tipmov = 'P' then
+
+    select count(1)
+      into v_count
+      from tgfite ite
+     where ite.nunota = :new.nunota
+       and nvl(ite.ad_duzia, 'N') = 'S';
+
+    /*if v_count > 0 then
+
+      select max(ite.ad_codprom)
+        into v_codprom
+        from tgfite ite
+       where ite.nunota = :new.nunota
+         and nvl(ite.ad_duzia, 'N') = 'N';
+
+      select nvl(t.dtfinfat, sysdate)
+        into v_dtfinfat
+        from ad_tprom t
+       where t.codprom = v_codprom;
+
+      if :new.dtfatur > v_dtfinfat then
+
+        raise_application_error(-20101,
+                                fc_formatahtml(P_MENSAGEM => 'Não foi possivel faturar',
+                                               P_MOTIVO   => 'Existe produtos onde a promoção ja expirou',
+                                               P_SOLUCAO  => 'Entre em contato com TI'));
+      end if;
+    end if;*/
+
+  end if;
+
+
+
+
+
+end;
