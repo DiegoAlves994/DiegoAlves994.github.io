@@ -157,3 +157,173 @@ P_MENSAGEM := 'Simulação realizada com sucesso (Nro Unico do pedido: ' || V_MA
 
 
 END;
+
+
+----------
+
+view calculo 
+
+
+  CREATE OR REPLACE FORCE EDITIONABLE VIEW "TESTE"."AD_VIEWCALCULOFRETE" ("CODTABFRETE", "NUCALC", "TOTPORKG", "FRETEPESO", "FRETEVALOR", "GRISS", "PEDAGIO", "DESPACHO", "COLETAENTREGA", "TOTALFRETE", "CODEMP", "CODTIPVENDA", "DHALTER", "CODTIPOPER", "DHTIPOPER", "CODPARC", "CODNAT", "CODCENCUS", "OBSERVACAO") AS 
+  SELECT DISTINCT 
+  CAL.CODTABFRETE,
+                CAL.NUCALC,
+                CASE
+                    WHEN TIPOFRETE = 4 AND CAL.PESO <='30' THEN FAIXAKG30
+                    WHEN TIPOFRETE = 4 AND CAL.PESO >'30'AND CAL.PESO <='50' THEN FAIXAKG50
+                    WHEN TIPOFRETE = 4 AND CAL.PESO >'50'AND CAL.PESO <='75' THEN FAIXAKG75
+                    WHEN TIPOFRETE = 4 AND CAL.PESO >'75'AND CAL.PESO <='100' THEN FAIXAKG100
+                    WHEN TIPOFRETE = 4 AND CAL.PESO >'100'AND CAL.PESO <='150' THEN FAIXAKG150
+                    WHEN TIPOFRETE = 4 AND CAL.PESO >'150'AND CAL.PESO <='180' THEN FAIXAKG180
+                    WHEN TIPOFRETE = 4 AND CAL.PESO >'180' THEN FAIXAKGMAXIMA
+                    
+                    WHEN TIPOFRETE = 2 AND CAL.PESO <='30' THEN FAIXAKG30
+                    WHEN TIPOFRETE = 2 AND CAL.PESO >'30'AND CAL.PESO <='50' THEN FAIXAKG50
+                    WHEN TIPOFRETE = 2 AND CAL.PESO >'50'AND CAL.PESO <='75' THEN FAIXAKG75
+                    WHEN TIPOFRETE = 2 AND CAL.PESO >'75'AND CAL.PESO <='100' THEN FAIXAKG100
+                    WHEN TIPOFRETE = 2 AND CAL.PESO >'100'AND CAL.PESO <='150' THEN FAIXAKG150
+                    WHEN TIPOFRETE = 2 AND CAL.PESO >'150'AND CAL.PESO <='180' THEN FAIXAKG180
+                    WHEN TIPOFRETE = 2 AND CAL.PESO >'180' THEN FAIXAKGMAXIMA
+                    ELSE 0
+                END AS TOTPORKG,
+                ROUND((CASE--frete por volume
+
+                           WHEN TIPOFRETE = 4
+                                AND CAL.PESO <= '30' THEN FAIXAKG30
+                           WHEN TIPOFRETE = 4
+                                AND CAL.PESO >'30'
+                                AND CAL.PESO <='50' THEN FAIXAKG50
+                           WHEN TIPOFRETE = 4
+                                AND CAL.PESO >'50'
+                                AND CAL.PESO <='75' THEN FAIXAKG75
+                           WHEN TIPOFRETE = 4
+                                AND CAL.PESO >'75'
+                                AND CAL.PESO <='100' THEN FAIXAKG100
+                           WHEN TIPOFRETE = 4
+                                AND CAL.PESO >'100'
+                                AND CAL.PESO <='150' THEN FAIXAKG150
+                           WHEN TIPOFRETE = 4
+                                AND CAL.PESO >'150'
+                                AND CAL.PESO <='180' THEN FAIXAKG180
+                           WHEN TIPOFRETE = 4
+                                AND CAL.PESO >'180' THEN (FAIXAKGMAXIMA/1000)*CAL.PESO ---frete por palete
+
+                           WHEN TIPOFRETE = 2
+                                AND CAL.PESO <='30' THEN (((1.2*1.2*1.8)*QTDPALETE*300*FAIXAKG30)/100)
+                           WHEN TIPOFRETE = 2
+                                AND CAL.PESO >'30'
+                                AND CAL.PESO <='50' THEN (((1.2*1.2*1.8)*QTDPALETE*300*FAIXAKG50)/100)
+                           WHEN TIPOFRETE = 2
+                                AND CAL.PESO >'50'
+                                AND CAL.PESO <='75' THEN (((1.2*1.2*1.8)*QTDPALETE*300*FAIXAKG75)/100)
+                           WHEN TIPOFRETE = 2
+                                AND CAL.PESO >'75'
+                                AND CAL.PESO <='100' THEN (((1.2*1.2*1.8)*QTDPALETE*300*FAIXAKG100)/100)
+                           WHEN TIPOFRETE = 2
+                                AND CAL.PESO >'100'
+                                AND CAL.PESO <='150' THEN (((1.2*1.2*1.8)*QTDPALETE*300*FAIXAKG150)/100)
+                           WHEN TIPOFRETE = 2
+                                AND CAL.PESO >'150'
+                                AND CAL.PESO <='180' THEN (((1.2*1.2*1.8)*QTDPALETE*300*FAIXAKG180)/100)
+                           WHEN TIPOFRETE = 2
+                                AND CAL.PESO >'180' THEN (((1.2*1.2*1.8)*QTDPALETE*300*FAIXAKGMAXIMA)/1000)----FRETE POR CARRETA
+
+                           WHEN TIPOFRETE = 1 THEN 0 --FRETE POR TRUCK
+
+                           WHEN TIPOFRETE = 3 THEN 0
+                       END), 2) AS FRETEPESO,
+                CASE
+                    WHEN TIPOFRETE = 2
+                         OR TIPOFRETE = 4 THEN round((FRT.ADICVLRMERCADORIA/100)*CAL.VALORNF, 2)
+                    ELSE 0
+                END AS FRETEVALOR,
+                CASE
+                    WHEN TIPOFRETE = 2
+                         OR TIPOFRETE = 4 THEN round((FRT.GRISS/100)*CAL.VALORNF, 2)
+                    ELSE 0
+                END AS GRISS,
+                CASE
+                    WHEN TIPOFRETE = 2
+                         OR TIPOFRETE = 4 THEN round((CAL.peso/100)*FRT.PEDAGIO, 2)
+                    ELSE 0
+                END AS PEDAGIO,
+                CASE
+                    WHEN TIPOFRETE = 2
+                         OR TIPOFRETE = 4 THEN FRT.DESPACHO
+                    ELSE 0
+                END AS DESPACHO,
+                CASE
+                    WHEN TIPOFRETE = 2
+                         OR TIPOFRETE = 4 THEN FRT.COLETAENTREGA
+                    ELSE 0
+                END AS COLETAENTREGA,
+                ROUND((CASE--frete por volume
+
+                           WHEN TIPOFRETE = 4
+                                AND CAL.PESO <='30' THEN FAIXAKG30+round((FRT.ADICVLRMERCADORIA/100)*CAL.VALORNF, 2)+round((FRT.griss/100)*CAL.VALORNF, 2)+round((CAL.peso/100)*FRT.PEDAGIO, 2)+FRT.COLETAENTREGA+nvl(CAL.OUTROSVLR, 0)+nvl(FRT.DESPACHO, 0)
+                           WHEN TIPOFRETE = 4
+                                AND CAL.PESO >'30'
+                                AND CAL.PESO <='50' THEN FAIXAKG50+round((FRT.ADICVLRMERCADORIA/100)*CAL.VALORNF, 2)+round((FRT.griss/100)*CAL.VALORNF, 2)+round((CAL.peso/100)*FRT.PEDAGIO, 2)+FRT.COLETAENTREGA+nvl(CAL.OUTROSVLR, 0)+nvl(FRT.DESPACHO, 0)
+                           WHEN TIPOFRETE = 4
+                                AND CAL.PESO >'50'
+                                AND CAL.PESO <='75' THEN FAIXAKG75+round((FRT.ADICVLRMERCADORIA/100)*CAL.VALORNF, 2)+round((FRT.griss/100)*CAL.VALORNF, 2)+round((CAL.peso/100)*FRT.PEDAGIO, 2)+FRT.COLETAENTREGA+nvl(CAL.OUTROSVLR, 0)+nvl(FRT.DESPACHO, 0)
+                           WHEN TIPOFRETE = 4
+                                AND CAL.PESO >'75'
+                                AND CAL.PESO <='100' THEN FAIXAKG100+round((FRT.ADICVLRMERCADORIA/100)*CAL.VALORNF, 2)+round((FRT.griss/100)*CAL.VALORNF, 2)+round((CAL.peso/100)*FRT.PEDAGIO, 2)+FRT.COLETAENTREGA+nvl(CAL.OUTROSVLR, 0)+nvl(FRT.DESPACHO, 0)
+                           WHEN TIPOFRETE = 4
+                                AND CAL.PESO >'100'
+                                AND CAL.PESO <='150' THEN FAIXAKG150+round((FRT.ADICVLRMERCADORIA/100)*CAL.VALORNF, 2)+round((FRT.griss/100)*CAL.VALORNF, 2)+round((CAL.peso/100)*FRT.PEDAGIO, 2)+FRT.COLETAENTREGA+nvl(CAL.OUTROSVLR, 0)+nvl(FRT.DESPACHO, 0)
+                           WHEN TIPOFRETE = 4
+                                AND CAL.PESO >'150'
+                                AND CAL.PESO <='180' THEN FAIXAKG180+round((FRT.ADICVLRMERCADORIA/100)*CAL.VALORNF, 2)+round((FRT.griss/100)*CAL.VALORNF, 2)+round((CAL.peso/100)*FRT.PEDAGIO, 2)+FRT.COLETAENTREGA+nvl(CAL.OUTROSVLR, 0)+nvl(FRT.DESPACHO, 0)
+                           WHEN TIPOFRETE = 4
+                                AND CAL.PESO >'180' THEN ((FAIXAKGMAXIMA/1000)*CAL.PESO)+round((FRT.ADICVLRMERCADORIA/100)*CAL.VALORNF, 2)+round((FRT.griss/100)*CAL.VALORNF, 2)+round((CAL.peso/100)*FRT.PEDAGIO, 2)+FRT.COLETAENTREGA+nvl(CAL.OUTROSVLR, 0)+nvl(FRT.DESPACHO, 0) ---frete por palete
+
+                           WHEN TIPOFRETE = 2
+                                AND CAL.PESO <='30' THEN (((1.2*1.2*1.8)*QTDPALETE*300*FAIXAKG30)/100)+round((FRT.ADICVLRMERCADORIA/100)*CAL.VALORNF, 2)+round((FRT.griss/100)*CAL.VALORNF, 2)+round((CAL.peso/100)*FRT.PEDAGIO, 2)+FRT.COLETAENTREGA+nvl(CAL.OUTROSVLR, 0)+nvl(FRT.DESPACHO, 0)
+                           WHEN TIPOFRETE = 2
+                                AND CAL.PESO >'30'
+                                AND CAL.PESO <='50' THEN (((1.2*1.2*1.8)*QTDPALETE*300*FAIXAKG50)/100)+round((FRT.ADICVLRMERCADORIA/100)*CAL.VALORNF, 2)+round((FRT.griss/100)*CAL.VALORNF, 2)+round((CAL.peso/100)*FRT.PEDAGIO, 2)+FRT.COLETAENTREGA+nvl(CAL.OUTROSVLR, 0)+nvl(FRT.DESPACHO, 0)
+                           WHEN TIPOFRETE = 2
+                                AND CAL.PESO >'50'
+                                AND CAL.PESO <='75' THEN (((1.2*1.2*1.8)*QTDPALETE*300*FAIXAKG75)/100)+round((FRT.ADICVLRMERCADORIA/100)*CAL.VALORNF, 2)+round((FRT.griss/100)*CAL.VALORNF, 2)+round((CAL.peso/100)*FRT.PEDAGIO, 2)+FRT.COLETAENTREGA+nvl(CAL.OUTROSVLR, 0)+nvl(FRT.DESPACHO, 0)
+                           WHEN TIPOFRETE = 2
+                                AND CAL.PESO >'75'
+                                AND CAL.PESO <='100' THEN (((1.2*1.2*1.8)*QTDPALETE*300*FAIXAKG100)/100)+round((FRT.ADICVLRMERCADORIA/100)*CAL.VALORNF, 2)+round((FRT.griss/100)*CAL.VALORNF, 2)+round((CAL.peso/100)*FRT.PEDAGIO, 2)+FRT.COLETAENTREGA+nvl(CAL.OUTROSVLR, 0)+nvl(FRT.DESPACHO, 0)
+                           WHEN TIPOFRETE = 2
+                                AND CAL.PESO >'100'
+                                AND CAL.PESO <='150' THEN (((1.2*1.2*1.8)*QTDPALETE*300*FAIXAKG150)/100)+round((FRT.ADICVLRMERCADORIA/100)*CAL.VALORNF, 2)+round((FRT.griss/100)*CAL.VALORNF, 2)+round((CAL.peso/100)*FRT.PEDAGIO, 2)+FRT.COLETAENTREGA+nvl(CAL.OUTROSVLR, 0)+nvl(FRT.DESPACHO, 0)
+                           WHEN TIPOFRETE = 2
+                                AND CAL.PESO >'150'
+                                AND CAL.PESO <='180' THEN (((1.2*1.2*1.8)*QTDPALETE*300*FAIXAKG180)/100)+round((FRT.ADICVLRMERCADORIA/100)*CAL.VALORNF, 2)+round((FRT.griss/100)*CAL.VALORNF, 2)+round((CAL.peso/100)*FRT.PEDAGIO, 2)+FRT.COLETAENTREGA+nvl(CAL.OUTROSVLR, 0)+nvl(FRT.DESPACHO, 0)
+                           WHEN TIPOFRETE = 2
+                                AND CAL.PESO >'180' THEN (((1.2*1.2*1.8)*QTDPALETE*300*FAIXAKGMAXIMA)/1000)+round((FRT.ADICVLRMERCADORIA/100)*CAL.VALORNF, 2)+round((FRT.griss/100)*CAL.VALORNF, 2)+round((CAL.peso/100)*FRT.PEDAGIO, 2)+FRT.COLETAENTREGA+nvl(CAL.OUTROSVLR, 0)+nvl(FRT.DESPACHO, 0)
+                           WHEN TIPOFRETE = 1 THEN (CARRETA+(VALORNF*0.003))-nvl(CAL.OUTROSVLR,
+0)--FRETE POR CARRETA
+                           WHEN TIPOFRETE = 3 THEN (TRUCK+(VALORNF*0.003))-nvl(CAL.OUTROSVLR,
+0) --FRETE POR TRUCK   
+                       END), 2) AS TOTALFRETE,
+                CAL.CODEMP,
+                CAL.CODTIPVENDA,
+  (SELECT DISTINCT MAX(DHALTER)
+   FROM TGFTPV
+   WHERE CODTIPVENDA = CAL.CODTIPVENDA), CAL.CODTIPOPER,
+  (SELECT DISTINCT MAX(TGFTOP.DHALTER)
+   FROM TGFTOP
+   WHERE CODTIPOPER = CAL.CODTIPOPER), CAL.CODPARC,
+                                       CAL.CODNAT,
+                                       CAL.CODCENCUS,
+                                       CAL.OBSERVACAO
+
+
+
+
+FROM AD_CALCULOFRETE CAL,
+     AD_TABELAFRETE FRT,
+     TGFTPV TPV,
+     TGFTOP TOP
+WHERE CAL.CODTABFRETE = FRT.CODTABFRETE
+AND TPV.CODTIPVENDA = CAL.CODTIPVENDA
+AND TOP.CODTIPOPER = CAL.CODTIPOPER;
+
+
