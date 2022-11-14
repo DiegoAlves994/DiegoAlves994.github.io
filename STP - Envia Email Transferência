@@ -1,0 +1,109 @@
+create or replace PROCEDURE "AD_STP_EMAIL_TRANSFERENCIA" 
+is
+/*----------------------------------------------------------------------------------------------------
+  %proposito:   NOTIFICAR VIA EMAIL OS USUÁRIO ENVOLVIDOS NO PROCESSO POR MEIO DA PREFERÊNCIA - EMAILTRANTRUSS
+  %observacao:   INCLUÍDO NAS AÇÕES AGENDADAS PARA DISPARO AUTOMÁTICO DE 2 EM 2 HRS
+  %historia:
+  * 01.00.0 11/11/2022 Diego.Alves
+  - versao inicial
+  ----------------------------------------------------------------------------------------------------*/
+
+V_VALIDA INT;
+V_NOTAS CLOB;
+V_TEXTO CLOB;
+V_CODFILA INT;
+CorpoEmail CLOB;
+CorpoEmail_1  CLOB;
+BEGIN
+
+SELECT COUNT(1) 
+INTO V_VALIDA
+FROM TGFCAB 
+WHERE CODTIPOPER IN (2134,2177,2178,2185,2188,2191,2227,2228,2192,3263)
+AND AD_STATUSPED !=6
+AND DTENTSAI >= '20/06/2022';
+
+IF V_VALIDA >=1 THEN
+
+SELECT MAX(CODFILA)+1 INTO V_CODFILA FROM TMDFMG;
+
+select listagg (' || Nota: ' || NUMNOTA  ||' /Empresa: '||CODEMP) within GROUP(ORDER BY nunota),'Foram geradas as Transferências entre Filiais abaixo e que estão pendentes de Conferência Cega Recebimento. Solicitamos a Conferência imediata para liberação da nota fiscal.' as TEXTO   
+INTO V_NOTAS, V_TEXTO
+from TGFCAB
+WHERE CODTIPOPER IN (2134,2177,2178,2185,2188,2191,2227,2228,2192,3263)
+and AD_STATUSPED != 6 
+and DTNEG >= '20/06/2022';
+
+
+
+CorpoEmail_1 :='<html xmlns="http://www.w3.org/1999/xhtml">
+                                <head>
+                                    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+                                    <meta name="viewport" content="width=device-width"/>
+
+                                </head>
+                                <body>
+                                    <table class="body">
+                                        <tr>
+                                            <td class="center" align="center" valign="top">
+                                            <center>
+                                                <table class="container">
+                                                    <tr>							
+                                                        <td>
+                                                            <table class="six columns">
+                                                                <tr>
+                                                                    <td align="center" valign="top">
+                                                                        <center>
+                                                                            <img src="http://trussprofessional.com/assinaturasis/cabe%C3%A7alho.jpeg" />
+                                                                        </center>
+                                                                    </td>
+                                                                    <td class="expander"></td>
+                                                                </tr>
+                                                            </table>
+                                                            <br>
+                                                            <table class="row">
+                                                                <tr>
+                                                                    <td class="wrapper last">
+                                                                        <table class="twelve columns">
+                                                                            <tr>'||V_TEXTO||V_NOTAS||'</tr>
+                                                                        </table>
+                                                                    </td>
+                                                                </tr>
+                                                            </table>
+                                                            <br>
+                                                            <table class="row">
+                                                                <tr>
+                                                                    <td class="wrapper last">
+                                                                        <table class="twelve columns">
+                                                                            <tr>
+                                                                                <td align="center" valign="top">
+                                                                                    <center>
+                                                                                    <img src="http://trussprofessional.com/assinaturasis/assinatura.jpeg" />
+                                                                                    </center>
+                                                                                </td>
+                                                                                <td class="expander"></td>
+                                                                            </tr>
+                                                                        </table>
+                                                                    </td>
+                                                                </tr>
+                                                            </table>
+                                                            </td>
+                                                        </tr>
+                                                    </table>
+                                                </center>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </body>
+                            </html>';
+
+FOR EMAIL IN (SELECT EMAIL, ROWNUM,'Foram geradas as Transferências entre Filiais abaixo e que estão pendentes de Conferência Cega Recebimento. Solicitamos a Conferência imediata para liberação da nota fiscal.' as TEXTO FROM AD_EMAILTRANTRUSS)
+LOOP
+INSERT INTO TMDFMG( CODFILA,ASSUNTO, DTENTRADA, STATUS, CODCON, TENTENVIO, MENSAGEM, TIPOENVIO, MAXTENTENVIO, EMAIL, MIMETYPE, CODUSU, CODSMTP)
+    VALUES       (V_CODFILA+EMAIL.ROWNUM,'Aviso de Recebimento Transferencia Filiais', SYSDATE,'Pendente', 0 , 1, CorpoEmail_1, 'E' , 3, EMAIL.EMAIL, 'text/html', 0, 1 );
+COMMIT;
+END LOOP;
+
+END IF;
+
+END;
