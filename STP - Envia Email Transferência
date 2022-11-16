@@ -19,7 +19,12 @@ BEGIN
 SELECT COUNT(1) 
 INTO V_VALIDA
 FROM TGFCAB 
-WHERE CODTIPOPER IN (2134,2177,2178,2185,2188,2191,2227,2228,2192,3263)
+WHERE CODTIPOPER IN ((SELECT 
+                      REGEXP_SUBSTR((SELECT trim(REPLACE(TRIM(TEXTO),CHR(10),'')) FROM TSIPAR  WHERE CHAVE LIKE 'TOPTRANSREC'),'[^,]+', 1, LEVEL) AS EMAIL
+                    FROM 
+                      DUAL 
+                    CONNECT BY REGEXP_SUBSTR((SELECT trim(REPLACE(TRIM(TEXTO),CHR(10),'')) FROM TSIPAR  WHERE CHAVE LIKE 'TOPTRANSREC'), '[^,]+', 1, LEVEL) IS NOT NULL)
+					)
 AND AD_STATUSPED !=6
 AND DTENTSAI >= '20/06/2022';
 
@@ -30,7 +35,12 @@ SELECT MAX(CODFILA)+1 INTO V_CODFILA FROM TMDFMG;
 select listagg (' || Nota: ' || NUMNOTA  ||' /Empresa: '||CODEMP) within GROUP(ORDER BY nunota),'Foram geradas as Transferências entre Filiais abaixo e que estão pendentes de Conferência Cega Recebimento. Solicitamos a Conferência imediata para liberação da nota fiscal.' as TEXTO   
 INTO V_NOTAS, V_TEXTO
 from TGFCAB
-WHERE CODTIPOPER IN (2134,2177,2178,2185,2188,2191,2227,2228,2192,3263)
+WHERE CODTIPOPER IN ((SELECT 
+                      REGEXP_SUBSTR((SELECT trim(REPLACE(TRIM(TEXTO),CHR(10),'')) FROM TSIPAR  WHERE CHAVE LIKE 'TOPTRANSREC'),'[^,]+', 1, LEVEL) AS EMAIL
+                    FROM 
+                      DUAL 
+                    CONNECT BY REGEXP_SUBSTR((SELECT trim(REPLACE(TRIM(TEXTO),CHR(10),'')) FROM TSIPAR  WHERE CHAVE LIKE 'TOPTRANSREC'), '[^,]+', 1, LEVEL) IS NOT NULL)
+					)
 and AD_STATUSPED != 6 
 and DTNEG >= '20/06/2022';
 
