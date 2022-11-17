@@ -14,6 +14,7 @@ V_TEXTO CLOB;
 V_CODFILA INT;
 CorpoEmail CLOB;
 CorpoEmail_1  CLOB;
+V_MAXCODFILA INT;
 BEGIN
 
 SELECT COUNT(1) 
@@ -30,7 +31,7 @@ AND DTENTSAI >= '20/06/2022';
 
 IF V_VALIDA >=1 THEN
 
-SELECT MAX(CODFILA)+1 INTO V_CODFILA FROM TMDFMG;
+SELECT MAX(CODFILA) INTO V_CODFILA FROM TMDFMG;
 
 select listagg (' || Nota: ' || NUMNOTA  ||' /Empresa: '||CODEMP) within GROUP(ORDER BY nunota),'Foram geradas as Transferências entre Filiais abaixo e que estão pendentes de Conferência Cega Recebimento. Solicitamos a Conferência imediata para liberação da nota fiscal.' as TEXTO   
 INTO V_NOTAS, V_TEXTO
@@ -74,8 +75,18 @@ CorpoEmail_1 :='<html xmlns="http://www.w3.org/1999/xhtml">
                                                             <table class="row">
                                                                 <tr>
                                                                     <td class="wrapper last">
-                                                                        <table class="twelve columns">
-                                                                            <tr>'||V_TEXTO||V_NOTAS||'</tr>
+                                                                        <table class="six columns">
+                                                                            <tr>'||V_NOTAS||'</tr>
+                                                                            <br>
+                                                                         <tr>
+                                                                          <font color="red">
+                                                                          <b>
+                                                                          <h1>
+                                                                         '||V_TEXTO||'
+                                                                         </h1>
+                                                                         </b>
+                                                                         </font>
+                                                                         </tr>
                                                                         </table>
                                                                     </td>
                                                                 </tr>
@@ -112,8 +123,17 @@ LOOP
 INSERT INTO TMDFMG( CODFILA,ASSUNTO, DTENTRADA, STATUS, CODCON, TENTENVIO, MENSAGEM, TIPOENVIO, MAXTENTENVIO, EMAIL, MIMETYPE, CODUSU, CODSMTP)
     VALUES       (V_CODFILA+EMAIL.ROWNUM,'Aviso de Recebimento Transferencia Filiais', SYSDATE,'Pendente', 0 , 1, CorpoEmail_1, 'E' , 3, EMAIL.EMAIL, 'text/html', 0, 1 );
 COMMIT;
+
 END LOOP;
 
 END IF;
+
+SELECT MAX(CODFILA)
+INTO V_MAXCODFILA
+FROM TMDFMG;
+
+update TGFNUM set ULTCOD = V_MAXCODFILA where ARQUIVO = 'TMDFMG';
+        commit;
+
 
 END;
