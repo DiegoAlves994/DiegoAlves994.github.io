@@ -1,0 +1,253 @@
+create or replace PROCEDURE "AD_STP_GERA_PEDCAMPANHA" (
+       P_CODUSU NUMBER,        -- Código do usuário logado
+       P_IDSESSAO VARCHAR2,    -- Identificador da execução. Serve para buscar informações dos parâmetros/campos da execução.
+       P_QTDLINHAS NUMBER,     -- Informa a quantidade de registros selecionados no momento da execução.
+       P_MENSAGEM OUT VARCHAR2 -- Caso seja passada uma mensagem aqui, ela será exibida como uma informação ao usuário.
+) AS
+       FIELD_SEQ NUMBER;
+       V_MAXULTCOD_CAB INT;
+       V_TOTALPEDIDO NUMBER;
+       V_CODVEND INT;
+       V_GERADO INT;
+
+CURSOR CUR_PESSOA IS  SELECT 
+A.CODTIPVENDA,
+A.CODTIPOPER,
+A.CODEMP,   
+A.CODCENCUS,
+A.CODNAT,
+A.CODNATCORREIOS,
+A.DTNEG,
+A.OBSERVACAO,
+A.DESCRICAO,
+ROWNUM,
+(SELECT DISTINCT MAX(TGFTOP.DHALTER)
+FROM TGFTOP
+WHERE CODTIPOPER = A.CODTIPOPER) as DHTIPOPER,
+(SELECT DISTINCT MAX(DHALTER)
+FROM TGFTPV
+WHERE CODTIPVENDA = A.CODTIPVENDA) AS DHTIPVENDA,
+B.CODPARC
+FROM AD_CABPEDIDOBASE A, AD_PARPEDIDOBASE B 
+WHERE A.SEQ =  FIELD_SEQ
+AND A.SEQ = B.SEQ;
+
+
+BEGIN
+
+       FOR I IN 1..P_QTDLINHAS
+       LOOP                   
+
+
+
+
+
+
+           FIELD_SEQ := ACT_INT_FIELD(P_IDSESSAO, I, 'SEQ');
+
+SELECT MAX(NUNOTA)
+INTO V_MAXULTCOD_CAB FROM(SELECT NUNOTA FROM TGFCAB
+UNION
+SELECT NUNOTA FROM TGFCAN);       
+
+SELECT SUM(VLRTOT)
+INTO V_TOTALPEDIDO
+FROM AD_ITEPEDIDOBASE
+WHERE SEQ = FIELD_SEQ;
+
+ SELECT U.CODVEND
+          INTO V_CODVEND
+             FROM TSIUSU U
+             WHERE U.CODUSU =
+                 (SELECT STP_GET_CODUSULOGADO
+                  FROM dual) ;
+
+SELECT COUNT(1)
+INTO V_GERADO
+FROM AD_CABPEDIDOBASE
+WHERE SEQ = FIELD_SEQ
+AND GERADO = 'S';
+
+IF V_GERADO >0 THEN
+raise_application_error(-20000,
+                              fc_formatahtml(p_mensagem => 'ATENÇÃO, NÃO É POSSÍVEL CONCLUIR A OPERAÇÃO',
+                                             p_motivo   => 'JÁ EXISTEM PEDIDOS GERADOS ANTERIORMENTE',
+                                             p_solucao  => 'REALIZE A LIMPEZA DA GERAÇÃO')); 
+END IF;
+
+
+
+FOR CABECA IN CUR_PESSOA LOOP
+
+
+
+
+INSERT INTO TGFCAB (NUNOTA, CODEMP, NUMNOTA, DTNEG, CODEMPNEGOC, CODTIPOPER, DHTIPOPER, DTALTER, CODCENCUS, CODPROJ, CODNAT, CODPARC, CODTIPVENDA, DHTIPVENDA, VLRNOTA, CIF_FOB, TIPMOV,CODVEND,AD_PEDIDOCAMPANHA,AD_CODNATCORREIOS,AD_OBSINT, CODUSU,CODUSUINC) VALUES 
+(V_MAXULTCOD_CAB+CABECA.ROWNUM, CABECA.CODEMP,0,CABECA.DTNEG, CABECA.CODEMP, CABECA.CODTIPOPER, CABECA.DHTIPOPER,CABECA.DTNEG,CABECA.CODCENCUS,0,CABECA.CODNAT, CABECA.CODPARC, CABECA.CODTIPVENDA, CABECA.DHTIPVENDA, V_TOTALPEDIDO, 'C','P',V_CODVEND,FIELD_SEQ, CABECA.CODNATCORREIOS,CABECA.OBSERVACAO,STP_GET_CODUSULOGADO,STP_GET_CODUSULOGADO);
+
+
+
+--END LOOP;
+END LOOP;
+commit;
+
+FOR ITEM IN(SELECT A.NUSEQ, A.CODPROD, A.QTDNEG, A.VLRUNIT, A.VLRTOT, cab.nunota, CAB.CODEMP, PRO.CODVOL, PRO.CODLOCALPADRAO FROM AD_ITEPEDIDOBASE A, TGFCAB CAB, TGFPRO PRO WHERE A.SEQ = FIELD_SEQ AND A.SEQ = CAB.AD_PEDIDOCAMPANHA AND A.CODPROD = PRO.CODPROD order by nunota, nuseq)LOOP
+INSERT INTO TGFITE(
+                NUNOTA,
+                CODPROD,
+                QTDNEG,
+                VLRUNIT,
+				VLRTOT,
+				BASEICMS,
+				ALIQICMS,
+				VLRICMS,
+                SEQUENCIA,
+                CODEMP,
+                CONTROLE,
+                CODVOL,
+                CODLOCALORIG,
+                ATUALESTOQUE
+            )
+VALUES (ITEM.NUNOTA, ITEM.CODPROD, ITEM.QTDNEG, ITEM.VLRUNIT, ITEM.VLRTOT,ITEM.VLRTOT, 0,0,ITEM.NUSEQ,ITEM.CODEMP,' ', ITEM.CODVOL, ITEM.CODLOCALPADRAO,0);
+
+END LOOP;
+END LOOP;
+
+UPDATE AD_CABPEDIDOBASE SET GERADO = 'S', CODUSU = STP_GET_CODUSULOGADO WHERE SEQ = FIELD_SEQ;
+
+P_MENSAGEM := 'Processo de geração concluído';
+
+
+
+
+
+END;
+
+
+
+------------
+create or replace PROCEDURE "AD_STP_COPIA_PEDCAMPANHA" (
+       P_CODUSU NUMBER,        -- Código do usuário logado
+       P_IDSESSAO VARCHAR2,    -- Identificador da execução. Serve para buscar informações dos parâmetros/campos da execução.
+       P_QTDLINHAS NUMBER,     -- Informa a quantidade de registros selecionados no momento da execução.
+       P_MENSAGEM OUT VARCHAR2 -- Caso seja passada uma mensagem aqui, ela será exibida como uma informação ao usuário.
+) AS
+       FIELD_SEQ NUMBER;
+       V_MAXSEQ INT;
+BEGIN
+
+       FOR I IN 1..P_QTDLINHAS -- Este loop permite obter o valor de campos dos registros envolvidos na execução.
+       LOOP                    
+           
+           FIELD_SEQ := ACT_INT_FIELD(P_IDSESSAO, I, 'SEQ');
+
+SELECT MAX(SEQ)+1
+INTO V_MAXSEQ
+FROM AD_CABPEDIDOBASE;
+
+
+
+           FOR CAB IN (SELECT
+                       SEQ,
+                       CODTIPVENDA, 
+                       CODTIPOPER,
+                       CODEMP,
+                       CODCENCUS,
+                       CODNAT,
+                       CODNATCORREIOS,
+                       DTNEG,
+                       OBSERVACAO,
+                       DESCRICAO,
+                       GERADO,
+                       CODUSU,
+                       NUTAB
+                       FROM AD_CABPEDIDOBASE
+                       WHERE SEQ = FIELD_SEQ)LOOP
+INSERT INTO AD_CABPEDIDOBASE (SEQ, CODTIPVENDA, CODTIPOPER,CODEMP,CODCENCUS,CODNAT, CODNATCORREIOS, DTNEG, OBSERVACAO,DESCRICAO,GERADO, CODUSU, NUTAB) 
+VALUES(V_MAXSEQ, CAB.CODTIPVENDA, CAB.CODTIPOPER, CAB.CODEMP,CAB.CODCENCUS,CAB.CODNAT,CAB.CODNATCORREIOS, CAB.DTNEG, CAB.OBSERVACAO, CAB.DESCRICAO, 'N', '0',CAB.NUTAB);
+           END LOOP;
+COMMIT;
+
+FOR PAR IN (SELECT 
+NUPAR, SEQ, CODPARC
+FROM AD_PARPEDIDOBASE
+WHERE SEQ = FIELD_SEQ)
+LOOP
+INSERT INTO AD_PARPEDIDOBASE (SEQ, NUPAR,CODPARC) VALUES (V_MAXSEQ,PAR.NUPAR,PAR.CODPARC);
+END LOOP;
+COMMIT;
+
+FOR ITE IN (SELECT
+       SEQ, NUSEQ, CODPROD, QTDNEG, VLRUNIT, VLRTOT
+
+
+FROM AD_ITEPEDIDOBASE
+WHERE SEQ= FIELD_SEQ)LOOP
+INSERT INTO AD_ITEPEDIDOBASE (SEQ, NUSEQ, CODPROD, QTDNEG, VLRUNIT, VLRTOT) VALUES (V_MAXSEQ, ITE.NUSEQ,ITE.CODPROD, ITE.QTDNEG, ITE.VLRUNIT, ITE.VLRTOT);
+
+
+END LOOP;
+COMMIT;
+
+
+
+
+       END LOOP;
+P_MENSAGEM := 'Processo de duplicação concluído Nº Sequencia '||V_MAXSEQ;
+
+
+
+
+
+
+END;
+-----------------
+create or replace PROCEDURE "AD_STP_LIMPA_PEDCAMPANHA" (
+       P_CODUSU NUMBER,        -- Código do usuário logado
+       P_IDSESSAO VARCHAR2,    -- Identificador da execução. Serve para buscar informações dos parâmetros/campos da execução.
+       P_QTDLINHAS NUMBER,     -- Informa a quantidade de registros selecionados no momento da execução.
+       P_MENSAGEM OUT VARCHAR2 -- Caso seja passada uma mensagem aqui, ela será exibida como uma informação ao usuário.
+) AS
+       FIELD_SEQ NUMBER;
+BEGIN
+
+       -- Os valores informados pelo formulário de parâmetros, podem ser obtidos com as funções:
+       --     ACT_INT_PARAM
+       --     ACT_DEC_PARAM
+       --     ACT_TXT_PARAM
+       --     ACT_DTA_PARAM
+       -- Estas funções recebem 2 argumentos:
+       --     ID DA SESSÃO - Identificador da execução (Obtido através de P_IDSESSAO))
+       --     NOME DO PARAMETRO - Determina qual parametro deve se deseja obter.
+
+
+       FOR I IN 1..P_QTDLINHAS -- Este loop permite obter o valor de campos dos registros envolvidos na execução.
+       LOOP                    -- A variável "I" representa o registro corrente.
+         
+         
+           FIELD_SEQ := ACT_INT_FIELD(P_IDSESSAO, I, 'SEQ');
+
+DELETE FROM TGFCAB WHERE AD_PEDIDOCAMPANHA = FIELD_SEQ;
+COMMIT;
+
+UPDATE AD_CABPEDIDOBASE SET GERADO = 'N', CODUSU = 0 WHERE SEQ = FIELD_SEQ;
+COMMIT;
+
+
+
+
+
+
+       END LOOP;
+
+
+
+
+P_MENSAGEM := 'Processo de limpeza realizado, pedidos deletados do portal de vendas';
+
+
+
+
+END;
+
+
