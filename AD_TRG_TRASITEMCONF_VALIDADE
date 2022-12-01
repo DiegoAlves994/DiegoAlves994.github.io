@@ -1,0 +1,78 @@
+create or replace TRIGGER "AD_TRG_TRASITEMCONF_VALIDADE" 
+  before insert on AD_TRASITEMCONF
+  for each row
+declare
+
+-- TRG Criada em 19/07/2022 por Diego.Alves.
+--Realiza a validação da dtval dos produtos acabados, comparando com o campo Shelflife do cadastro de parceiros
+
+  -- local variables here
+    V_VALIDADE number;
+    V_SHELFLIFE number;
+    V_INVENTARIO INT;
+    V_CODEMP INT;
+
+begin
+
+IF INSERTING then 
+
+select DISTINCT  nvl(max(EST.DTVAL),sysdate+500)-sysdate
+INTO V_VALIDADE
+from AD_TRASETIQUETA A, TGFEST EST
+WHERE A.CODBARRAS = :NEW.CODBARRA
+AND A.CODPROD = EST.CODPROD
+AND A.CONTROLE = EST.CONTROLE;
+
+
+select PAR.AD_SHELFLIFE
+INTO V_SHELFLIFE
+from  TGFCAB CAB, TGFPAR PAR
+WHERE  CAB.CODPARC = PAR.CODPARC
+and CAB.NUNOTA = :NEW.NUNOTA;
+
+IF V_VALIDADE < V_SHELFLIFE THEN  raise_application_error(-20101,
+                              fc_formatahtml(p_mensagem => 'Bipagem do item não pode ser concluída',
+                                             p_motivo   => 'Data de validade inferior ao Shelflife do cadastro de parceiros',
+                                             p_solucao  => 'Selecionar lote com prazo de validade maior que Shelflife do parceiro'));
+END IF;
+END IF;
+
+
+-- Alteração realizada em 30/08/22 por Diego.Alves
+-- Adicionada validação de não permitir separação para os itens em inventário, tela inventário por etiqueta.
+
+
+
+IF INSERTING then 
+
+
+select CODEMP 
+INTO V_CODEMP
+from TGFCAB
+where NUNOTA = :NEW.NUNOTA;
+
+
+select COUNT(1)
+INTO V_INVENTARIO
+from AD_CABINVENT
+WHERE PROCESSADO IS NULL
+AND DHPROCESSADO IS NULL
+AND CODPROD = :NEW.CODPROD
+AND CODEMP = V_CODEMP;
+
+
+IF V_INVENTARIO > 0 THEN raise_application_error(-20101,
+                              fc_formatahtml(p_mensagem => 'Bipagem do item não pode ser concluída',
+                                             p_motivo   => 'Produto: '||:NEW.CODPROD||' possuí uma contagem de inventário em aberto',
+                                             p_solucao  => 'Favor consultar o responsável pela contagem de estoque/supervisor imediato'));
+
+
+
+END IF;
+END IF;
+
+
+
+
+
+end;
