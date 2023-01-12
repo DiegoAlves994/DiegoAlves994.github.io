@@ -1,0 +1,312 @@
+
+__________________ despesas
+
+
+SELECT MainAccount.name,
+       MainAccount.recid,
+
+  (SELECT SUM(A.ValorMoedaTransacao)
+   FROM MainAccountTransactionsDataView_PTR A
+   WHERE A.Data BETWEEN
+       (SELECT CONVERT(VARCHAR, GETDATE()-365 - DATEPART(DAY, GETDATE()-365) + 1, 102)) AND
+       (SELECT CURRENT_TIMESTAMP-365 )/** VERIFICAR COMO ADICIONAR O PARÂMETRO**/
+     AND a.IDMainAccount = MainAccount.RECID ) AS "Mensal 1 Ano Atrás",
+
+  (SELECT SUM(A.ValorMoedaTransacao)
+   FROM MainAccountTransactionsDataView_PTR A
+   WHERE A.Data BETWEEN
+       (SELECT CONVERT(VARCHAR, GETDATE() - DATEPART(DAY, GETDATE()) + 1, 102)) AND
+       (SELECT CURRENT_TIMESTAMP )/** VERIFICAR COMO ADICIONAR O PARÂMETRO**/
+     AND a.IDMainAccount = MainAccount.RECID ) AS "Mensal Realizado",
+
+  (SELECT sum(BudgetTransactionLineDataView_PTR.valor)
+   FROM BudgetTransactionLineDataView_PTR
+   INNER JOIN DimensionAttributeValueCombination with(nolock) ON DimensionAttributeValueCombination.DISPLAYVALUE = BudgetTransactionLineDataView_PTR.ValoresDimensao
+   INNER JOIN MainAccount a WITH (nolock) ON MainAccount.recid = DimensionAttributeValueCombination.MainAccount
+   AND a.RECID = MainAccount.RECID
+   WHERE BudgetTransactionLineDataView_PTR.data BETWEEN
+       (SELECT CONVERT(VARCHAR, GETDATE() - DATEPART(DAY, GETDATE()) + 1, 102)) AND
+       (SELECT CURRENT_TIMESTAMP)
+     AND BudgetTransactionLineDataView_PTR.TipoValor like 'Despesa') AS "Mensal Orçado",
+
+  (SELECT SUM(A.ValorMoedaTransacao)
+   FROM MainAccountTransactionsDataView_PTR A
+   WHERE A.Data BETWEEN
+       (SELECT CONVERT(VARCHAR, GETDATE() - DATEPART(DAY, GETDATE()) + 1, 102)) AND
+       (SELECT CURRENT_TIMESTAMP )/** VERIFICAR COMO ADICIONAR O PARÂMETRO**/
+     AND a.IDMainAccount = MainAccount.RECID )-
+  (SELECT sum(BudgetTransactionLineDataView_PTR.valor)
+   FROM BudgetTransactionLineDataView_PTR
+   INNER JOIN DimensionAttributeValueCombination with(nolock) ON DimensionAttributeValueCombination.DISPLAYVALUE = BudgetTransactionLineDataView_PTR.ValoresDimensao
+   INNER JOIN MainAccount a WITH (nolock) ON MainAccount.recid = DimensionAttributeValueCombination.MainAccount
+   AND a.RECID = MainAccount.RECID
+   WHERE BudgetTransactionLineDataView_PTR.data BETWEEN
+       (SELECT CONVERT(VARCHAR, GETDATE() - DATEPART(DAY, GETDATE()) + 1, 102)) AND
+       (SELECT CURRENT_TIMESTAMP)
+     AND BudgetTransactionLineDataView_PTR.TipoValor like 'Despesa')*iif(
+                                                                           (SELECT SUM(A.ValorMoedaTransacao)
+                                                                            FROM MainAccountTransactionsDataView_PTR A
+                                                                            WHERE A.Data BETWEEN
+                                                                                (SELECT CONVERT(VARCHAR, GETDATE() - DATEPART(DAY, GETDATE()) + 1, 102)) AND
+                                                                                (SELECT CURRENT_TIMESTAMP )/** VERIFICAR COMO ADICIONAR O PARÂMETRO**/
+                                                                              AND a.IDMainAccount = MainAccount.RECID )<0, -1, 1) AS "Dif R$",
+
+ (((SELECT SUM(A.ValorMoedaTransacao)
+   FROM MainAccountTransactionsDataView_PTR A
+   WHERE A.Data BETWEEN
+       (SELECT CONVERT(VARCHAR, GETDATE() - DATEPART(DAY, GETDATE()) + 1, 102))  AND
+       (SELECT CURRENT_TIMESTAMP )
+     AND a.IDMainAccount = MainAccount.RECID )-
+  (SELECT sum(BudgetTransactionLineDataView_PTR.valor)
+   FROM BudgetTransactionLineDataView_PTR
+   INNER JOIN DimensionAttributeValueCombination with(nolock) ON DimensionAttributeValueCombination.DISPLAYVALUE = BudgetTransactionLineDataView_PTR.ValoresDimensao
+   INNER JOIN MainAccount a WITH (nolock) ON MainAccount.recid = DimensionAttributeValueCombination.MainAccount
+   AND a.RECID = MainAccount.RECID
+   WHERE BudgetTransactionLineDataView_PTR.data BETWEEN
+       (SELECT CONVERT(VARCHAR, GETDATE() - DATEPART(DAY, GETDATE()) + 1, 102))  AND
+       (SELECT CURRENT_TIMESTAMP)
+     AND BudgetTransactionLineDataView_PTR.TipoValor like 'Despesa')*iif(
+                                                                           (SELECT SUM(A.ValorMoedaTransacao)
+                                                                            FROM MainAccountTransactionsDataView_PTR A
+                                                                            WHERE A.Data BETWEEN
+                                                                                (SELECT CONVERT(VARCHAR, GETDATE() - DATEPART(DAY, GETDATE()) + 1, 102))  AND
+                                                                                (SELECT CURRENT_TIMESTAMP )/** VERIFICAR COMO ADICIONAR O PARÂMETRO**/
+                                                                              AND a.IDMainAccount = MainAccount.RECID )<0, -1, 1))*100)/ (SELECT sum(BudgetTransactionLineDataView_PTR.valor)
+   FROM BudgetTransactionLineDataView_PTR
+   INNER JOIN DimensionAttributeValueCombination with(nolock) ON DimensionAttributeValueCombination.DISPLAYVALUE = BudgetTransactionLineDataView_PTR.ValoresDimensao
+   INNER JOIN MainAccount a WITH (nolock) ON MainAccount.recid = DimensionAttributeValueCombination.MainAccount
+   AND a.RECID = MainAccount.RECID
+   WHERE BudgetTransactionLineDataView_PTR.data BETWEEN
+      (SELECT CONVERT(VARCHAR, GETDATE() - DATEPART(DAY, GETDATE()) + 1, 102))  AND
+       (SELECT CURRENT_TIMESTAMP)
+     AND BudgetTransactionLineDataView_PTR.TipoValor like 'Despesa') as "DIF %",
+
+    (SELECT SUM(A.ValorMoedaTransacao)
+   FROM MainAccountTransactionsDataView_PTR A
+   WHERE A.Data BETWEEN
+         (SELECT CURRENT_TIMESTAMP-730 )AND
+       (SELECT CURRENT_TIMESTAMP-365 )/** VERIFICAR COMO ADICIONAR O PARÂMETRO**/
+     AND a.IDMainAccount = MainAccount.RECID ) AS "YTD 1 AnoAtras",
+
+   (SELECT SUM(A.ValorMoedaTransacao)
+   FROM MainAccountTransactionsDataView_PTR A
+   WHERE A.Data BETWEEN
+        (SELECT CURRENT_TIMESTAMP-365 )AND
+       (SELECT CURRENT_TIMESTAMP )/** VERIFICAR COMO ADICIONAR O PARÂMETRO**/
+     AND a.IDMainAccount = MainAccount.RECID ) AS "YTD Realizado",
+
+    (SELECT sum(BudgetTransactionLineDataView_PTR.valor)
+   FROM BudgetTransactionLineDataView_PTR
+   INNER JOIN DimensionAttributeValueCombination with(nolock) ON DimensionAttributeValueCombination.DISPLAYVALUE = BudgetTransactionLineDataView_PTR.ValoresDimensao
+   INNER JOIN MainAccount a WITH (nolock) ON MainAccount.recid = DimensionAttributeValueCombination.MainAccount
+   AND a.RECID = MainAccount.RECID
+   WHERE BudgetTransactionLineDataView_PTR.data BETWEEN
+        (SELECT CURRENT_TIMESTAMP-365 )AND
+       (SELECT CURRENT_TIMESTAMP)
+     AND BudgetTransactionLineDataView_PTR.TipoValor like 'Despesa') as "YTD Orçado",
+
+
+   (SELECT SUM(A.ValorMoedaTransacao)
+   FROM MainAccountTransactionsDataView_PTR A
+   WHERE A.Data BETWEEN
+       (SELECT CURRENT_TIMESTAMP-365 ) AND
+       (SELECT CURRENT_TIMESTAMP )/** VERIFICAR COMO ADICIONAR O PARÂMETRO**/
+     AND a.IDMainAccount = MainAccount.RECID )-
+  (SELECT sum(BudgetTransactionLineDataView_PTR.valor)
+   FROM BudgetTransactionLineDataView_PTR
+   INNER JOIN DimensionAttributeValueCombination with(nolock) ON DimensionAttributeValueCombination.DISPLAYVALUE = BudgetTransactionLineDataView_PTR.ValoresDimensao
+   INNER JOIN MainAccount a WITH (nolock) ON MainAccount.recid = DimensionAttributeValueCombination.MainAccount
+   AND a.RECID = MainAccount.RECID
+   WHERE BudgetTransactionLineDataView_PTR.data BETWEEN
+       (SELECT CURRENT_TIMESTAMP-365 ) AND
+       (SELECT CURRENT_TIMESTAMP)
+     AND BudgetTransactionLineDataView_PTR.TipoValor like 'Despesa')*iif(
+                                                                           (SELECT SUM(A.ValorMoedaTransacao)
+                                                                            FROM MainAccountTransactionsDataView_PTR A
+                                                                            WHERE A.Data BETWEEN
+                                                                                (SELECT CURRENT_TIMESTAMP-365 ) AND
+                                                                                (SELECT CURRENT_TIMESTAMP )/** VERIFICAR COMO ADICIONAR O PARÂMETRO**/
+                                                                              AND a.IDMainAccount = MainAccount.RECID )<0, -1, 1) as "YTD DIF R$",
+ (((SELECT SUM(A.ValorMoedaTransacao)
+   FROM MainAccountTransactionsDataView_PTR A
+   WHERE A.Data BETWEEN
+       (SELECT CURRENT_TIMESTAMP-365 ) AND
+       (SELECT CURRENT_TIMESTAMP )
+     AND a.IDMainAccount = MainAccount.RECID )-
+  (SELECT sum(BudgetTransactionLineDataView_PTR.valor)
+   FROM BudgetTransactionLineDataView_PTR
+   INNER JOIN DimensionAttributeValueCombination with(nolock) ON DimensionAttributeValueCombination.DISPLAYVALUE = BudgetTransactionLineDataView_PTR.ValoresDimensao
+   INNER JOIN MainAccount a WITH (nolock) ON MainAccount.recid = DimensionAttributeValueCombination.MainAccount
+   AND a.RECID = MainAccount.RECID
+   WHERE BudgetTransactionLineDataView_PTR.data BETWEEN
+       (SELECT CURRENT_TIMESTAMP-365 )  AND
+       (SELECT CURRENT_TIMESTAMP)
+     AND BudgetTransactionLineDataView_PTR.TipoValor like 'Despesa')*iif(
+                                                                           (SELECT SUM(A.ValorMoedaTransacao)
+                                                                            FROM MainAccountTransactionsDataView_PTR A
+                                                                            WHERE A.Data BETWEEN
+                                                                                (SELECT CURRENT_TIMESTAMP-365 )   AND
+                                                                                (SELECT CURRENT_TIMESTAMP )/** VERIFICAR COMO ADICIONAR O PARÂMETRO**/
+                                                                              AND a.IDMainAccount = MainAccount.RECID )<0, -1, 1))*100)/ (SELECT sum(BudgetTransactionLineDataView_PTR.valor)
+   FROM BudgetTransactionLineDataView_PTR
+   INNER JOIN DimensionAttributeValueCombination with(nolock) ON DimensionAttributeValueCombination.DISPLAYVALUE = BudgetTransactionLineDataView_PTR.ValoresDimensao
+   INNER JOIN MainAccount a WITH (nolock) ON MainAccount.recid = DimensionAttributeValueCombination.MainAccount
+   AND a.RECID = MainAccount.RECID
+   WHERE BudgetTransactionLineDataView_PTR.data BETWEEN
+      (SELECT CURRENT_TIMESTAMP-365 )   AND
+       (SELECT CURRENT_TIMESTAMP)
+     AND BudgetTransactionLineDataView_PTR.TipoValor like 'Despesa') as "YTD DIF%"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+FROM MainAccount
+WHERE MainAccount.type <> 8 --verificar filtro, se não esta faltando nenhuma analítica --verificar como filtrar as despesas apenas.
+ORDER BY MainAccount.name ASC
+
+
+
+
+______________________________ FINANCEIRA VERSÃO 2.0
+
+
+
+
+SELECT MainAccount.name,
+       MainAccount.recid,
+
+  (SELECT SUM(A.ValorMoedaTransacao)
+   FROM MainAccountTransactionsDataView_PTR A
+   WHERE A.Data BETWEEN
+       (SELECT CONVERT(VARCHAR, GETDATE() - DATEPART(DAY, GETDATE()) + 1, 102)) AND
+       (SELECT CURRENT_TIMESTAMP )/** VERIFICAR COMO ADICIONAR O PARÂMETRO**/
+     AND a.IDMainaccount = MainAccount.RECID ) AS MensalRL,
+
+  (SELECT SUM(A.ValorMoedaTransacao)
+   FROM MainAccountTransactionsDataView_PTR A
+   WHERE A.Data BETWEEN
+       (SELECT CONVERT(VARCHAR, GETDATE()-365 - DATEPART(DAY, GETDATE()-365) + 1, 102)) AND
+       (SELECT CURRENT_TIMESTAMP-365 )/** VERIFICAR COMO ADICIONAR O PARÂMETRO**/
+     AND a.IDMainaccount = MainAccount.RECID) AS "1AnoAtrasRL",
+
+  (SELECT sum(BudgetTransactionLineDataView_PTR.Valor)
+   FROM BudgetTransactionLineDataView_PTR
+   INNER JOIN DimensionAttributeValueCombination with(nolock) ON DimensionAttributeValueCombination.DISPLAYVALUE = BudgetTransactionLineDataView_PTR.ValoresDimensao
+   INNER JOIN MainAccount a WITH (nolock) ON a.recid = DimensionAttributeValueCombination.MainAccount
+   AND a.RECID = MainAccount.RECID
+   WHERE BudgetTransactionLineDataView_PTR.Data BETWEEN
+       (SELECT CONVERT(VARCHAR, GETDATE() - DATEPART(DAY, GETDATE()) + 1, 102)) AND
+       (SELECT CURRENT_TIMESTAMP )/**VERIFICAR ADICIONAR PARAMETRO**/ ) AS MensalOR,
+
+  (SELECT SUM(A.ValorMoedaTransacao)
+   FROM MainAccountTransactionsDataView_PTR A
+   WHERE A.Data BETWEEN
+       (SELECT CONVERT(VARCHAR, GETDATE() - DATEPART(DAY, GETDATE()) + 1, 102)) AND
+       (SELECT CURRENT_TIMESTAMP )/** VERIFICAR COMO ADICIONAR O PARÂMETRO**/
+     AND a.IDMainaccount = MainAccount.RECID)-
+  (SELECT sum(BudgetTransactionLineDataView_PTR.Valor)
+   FROM BudgetTransactionLineDataView_PTR
+   INNER JOIN DimensionAttributeValueCombination with(nolock) ON DimensionAttributeValueCombination.DISPLAYVALUE = BudgetTransactionLineDataView_PTR.ValoresDimensao
+   INNER JOIN MainAccount A WITH (nolock) ON MainAccount.recid = DimensionAttributeValueCombination.MainAccount
+   AND a.RECID = MainAccount.RECID
+   WHERE BudgetTransactionLineDataView_PTR.Data BETWEEN
+       (SELECT CONVERT(VARCHAR, GETDATE() - DATEPART(DAY, GETDATE()) + 1, 102)) AND
+       (SELECT CURRENT_TIMESTAMP )/**VERIFICAR ADICIONAR PARAMETRO**/ )*iif(
+                                                                              (SELECT SUM(A.ValorMoedaTransacao)
+                                                                               FROM MainAccountTransactionsDataView_PTR A
+                                                                               WHERE A.Data BETWEEN
+                                                                                   (SELECT CONVERT(VARCHAR, GETDATE() - DATEPART(DAY, GETDATE()) + 1, 102)) AND
+                                                                                   (SELECT CURRENT_TIMESTAMP )/** VERIFICAR COMO ADICIONAR O PARÂMETRO**/
+                                                                                 AND a.IDMainaccount = MainAccount.RECID)<0, -1, 1) AS MensalVar$,
+
+
+
+
+ (((SELECT SUM(A.ValorMoedaTransacao)
+   FROM MainAccountTransactionsDataView_PTR A
+   WHERE A.Data BETWEEN (SELECT CONVERT(VARCHAR, GETDATE() - DATEPART(DAY, GETDATE()) + 1, 102))  AND (SELECT  CURRENT_TIMESTAMP )/** VERIFICAR COMO ADICIONAR O PARÂMETRO**/
+     AND a.IDMainaccount = MainAccount.RECID)-(SELECT sum(BudgetTransactionLineDataView_PTR.Valor)
+   FROM BudgetTransactionLineDataView_PTR
+   INNER JOIN DimensionAttributeValueCombination with(nolock) ON DimensionAttributeValueCombination.DISPLAYVALUE = BudgetTransactionLineDataView_PTR.ValoresDimensao
+   INNER JOIN MainAccount a WITH (nolock) ON MainAccount.recid = DimensionAttributeValueCombination.MainAccount
+   AND a.RECID= MainAccount.RECID
+   WHERE BudgetTransactionLineDataView_PTR.Data BETWEEN (SELECT CONVERT(VARCHAR, GETDATE() - DATEPART(DAY, GETDATE()) + 1, 102))  AND (SELECT  CURRENT_TIMESTAMP )/**VERIFICAR ADICIONAR PARAMETRO**/ )*iif((SELECT SUM(A.ValorMoedaTransacao)
+   FROM MainAccountTransactionsDataView_PTR A
+   WHERE A.Data BETWEEN (SELECT CONVERT(VARCHAR, GETDATE() - DATEPART(DAY, GETDATE()) + 1, 102))  AND (SELECT  CURRENT_TIMESTAMP )/** VERIFICAR COMO ADICIONAR O PARÂMETRO**/
+     AND a.IDMainaccount = MainAccount.RECID)<0, -1, 1))*100)/ (SELECT sum(BudgetTransactionLineDataView_PTR.Valor)
+   FROM BudgetTransactionLineDataView_PTR
+   INNER JOIN DimensionAttributeValueCombination with(nolock) ON DimensionAttributeValueCombination.DISPLAYVALUE = BudgetTransactionLineDataView_PTR.ValoresDimensao
+   INNER JOIN MainAccount a WITH (nolock) ON MainAccount.recid = DimensionAttributeValueCombination.MainAccount
+   AND a.RECID= MainAccount.RECID
+   WHERE BudgetTransactionLineDataView_PTR.Data BETWEEN (SELECT CONVERT(VARCHAR, GETDATE() - DATEPART(DAY, GETDATE()) + 1, 102))  AND (SELECT  CURRENT_TIMESTAMP )/**VERIFICAR ADICIONAR PARAMETRO**/ ) AS "MensalVar%",
+
+
+
+    (SELECT SUM(A.ValorMoedaTransacao)
+   FROM MainAccountTransactionsDataView_PTR A
+   WHERE A.Data BETWEEN (SELECT  CURRENT_TIMESTAMP-730 ) AND (SELECT  CURRENT_TIMESTAMP-365 )/** VERIFICAR COMO ADICIONAR O PARÂMETRO**/
+     AND a.IDMainaccount = MainAccount.RECID) AS "YTD1AnoAnteriorRL",
+   (SELECT SUM(A.ValorMoedaTransacao)
+   FROM MainAccountTransactionsDataView_PTR A
+   WHERE A.Data BETWEEN (SELECT  CURRENT_TIMESTAMP-365 ) AND (SELECT  CURRENT_TIMESTAMP )/** VERIFICAR COMO ADICIONAR O PARÂMETRO**/
+     AND a.IDMainaccount = MainAccount.RECID) AS "YTD RL",
+
+     (SELECT sum(BudgetTransactionLineDataView_PTR.Valor)
+   FROM BudgetTransactionLineDataView_PTR
+   INNER JOIN DimensionAttributeValueCombination with(nolock) ON DimensionAttributeValueCombination.DISPLAYVALUE = BudgetTransactionLineDataView_PTR.ValoresDimensao
+   INNER JOIN MainAccount a WITH (nolock) ON MainAccount.recid = DimensionAttributeValueCombination.MainAccount
+   AND a.RECID= MainAccount.RECID
+   WHERE BudgetTransactionLineDataView_PTR.Data BETWEEN (SELECT  CURRENT_TIMESTAMP-365 ) AND (SELECT  CURRENT_TIMESTAMP )/**VERIFICAR ADICIONAR PARAMETRO**/ ) AS "YTD OR",
+
+   (SELECT SUM(A.ValorMoedaTransacao)
+   FROM MainAccountTransactionsDataView_PTR A
+   WHERE A.Data BETWEEN (SELECT  CURRENT_TIMESTAMP-365 ) AND (SELECT  CURRENT_TIMESTAMP )/** VERIFICAR COMO ADICIONAR O PARÂMETRO**/
+     AND a.IDMainaccount = MainAccount.RECID)-(SELECT sum(BudgetTransactionLineDataView_PTR.Valor)
+   FROM BudgetTransactionLineDataView_PTR
+   INNER JOIN DimensionAttributeValueCombination with(nolock) ON DimensionAttributeValueCombination.DISPLAYVALUE = BudgetTransactionLineDataView_PTR.ValoresDimensao
+   INNER JOIN MainAccount a WITH (nolock) ON MainAccount.recid = DimensionAttributeValueCombination.MainAccount
+   AND a.RECID= MainAccount.RECID
+   WHERE BudgetTransactionLineDataView_PTR.Data BETWEEN (SELECT  CURRENT_TIMESTAMP-365 ) AND (SELECT  CURRENT_TIMESTAMP )/**VERIFICAR ADICIONAR PARAMETRO**/ )*iif((SELECT SUM(A.ValorMoedaTransacao)
+   FROM MainAccountTransactionsDataView_PTR A
+   WHERE A.Data BETWEEN (SELECT  CURRENT_TIMESTAMP-365 ) AND (SELECT  CURRENT_TIMESTAMP )/** VERIFICAR COMO ADICIONAR O PARÂMETRO**/
+     AND a.IDMainaccount = MainAccount.RECID)<0, -1, 1) as "YTD Var$",
+
+   (((SELECT SUM(A.ValorMoedaTransacao)
+   FROM MainAccountTransactionsDataView_PTR A
+   WHERE A.Data BETWEEN (SELECT  CURRENT_TIMESTAMP-365 ) AND (SELECT  CURRENT_TIMESTAMP )/** VERIFICAR COMO ADICIONAR O PARÂMETRO**/
+     AND a.IDMainaccount = MainAccount.RECID)-(SELECT sum(BudgetTransactionLineDataView_PTR.Valor)
+   FROM BudgetTransactionLineDataView_PTR
+   INNER JOIN DimensionAttributeValueCombination with(nolock) ON DimensionAttributeValueCombination.DISPLAYVALUE = BudgetTransactionLineDataView_PTR.ValoresDimensao
+   INNER JOIN MainAccount a WITH (nolock) ON MainAccount.recid = DimensionAttributeValueCombination.MainAccount
+   AND a.RECID= MainAccount.RECID
+   WHERE BudgetTransactionLineDataView_PTR.Data BETWEEN (SELECT  CURRENT_TIMESTAMP-365 ) AND (SELECT  CURRENT_TIMESTAMP )/**VERIFICAR ADICIONAR PARAMETRO**/ )*iif((SELECT SUM(A.ValorMoedaTransacao)
+   FROM MainAccountTransactionsDataView_PTR A
+   WHERE A.Data BETWEEN (SELECT  CURRENT_TIMESTAMP-365 ) AND (SELECT  CURRENT_TIMESTAMP )/** VERIFICAR COMO ADICIONAR O PARÂMETRO**/
+     AND a.IDMainaccount = MainAccount.RECID)<0, -1, 1))*100)/ (SELECT sum(BudgetTransactionLineDataView_PTR.Valor)
+   FROM BudgetTransactionLineDataView_PTR
+   INNER JOIN DimensionAttributeValueCombination with(nolock) ON DimensionAttributeValueCombination.DISPLAYVALUE = BudgetTransactionLineDataView_PTR.ValoresDimensao
+   INNER JOIN MainAccount a WITH (nolock) ON MainAccount.recid = DimensionAttributeValueCombination.MainAccount
+   AND a.RECID= MainAccount.RECID
+   WHERE BudgetTransactionLineDataView_PTR.Data BETWEEN (SELECT  CURRENT_TIMESTAMP-365 ) AND (SELECT  CURRENT_TIMESTAMP )/**VERIFICAR ADICIONAR PARAMETRO**/ )  as "YTD Var%"
+
+
+
+
+
+
+FROM MainAccount
+WHERE MainAccount.type <> 8 --verificar filtro, se não esta faltando nenhuma analítica --verificar como filtrar as despesas apenas.
+ORDER BY MainAccount.name ASC
