@@ -1,0 +1,350 @@
+/****** Object:  View [dbo].[VendasOrcamento_PTR]    Script Date: 02/03/2023 16:03:05 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+
+
+
+
+
+
+
+
+ALTER view [dbo].[VendasOrcamento_PTR] as 
+
+         
+ 
+         
+
+SELECT 
+            
+            'date'						  =   CIJ.DUEDATE
+            ,'Empresa'					  = CIJ.DataAreaId
+            ,'IdVenda'					  = CIJ.SalesId
+			,'BusinessSegmentHyperion'	  = IsNull(HIBS.HyperionBusinessSegment,'') 
+            ,'BusinessSegment'            = ST.SubsegmentId_PTR
+			,'BusinessSegmentDescricao'	  = IsNull(SBRSG.SubsegmentDescription,'')
+            ,'BusinessSegmentMR'          = SBRSG.BusinessSegmentMr_PTR
+            ,'BusinessSegmentInterc/Third'= SBRSG.BusinessSegmentInterc_PTR
+            ,'Modalidade'                  = IsNull(HIBU.HyperionBusinessUnit,'')
+            ,'Mercado'                    = iif(SSUV.ParentID = '',SSU.ParentID,SSUv.ParentId)
+            ,'BU'                         = IsNull(SSU.ParentId, '')
+            ,'RegiaoDeVenda'              = ST.SalesUnitId
+            ,'CodigoCliente'              = CIJ.INVOICEACCOUNT
+            ,'ClienteMatriz'              = IIF(CT.CompanyChainId = '',DPT.NAME,CT.CompanyChainId) 
+            ,'ClienteFilial'              = DPT.NAME
+            ,'Material'                   = IsNull(DPT2.NAME, '')
+            ,'MaterialStrathie'           = IsNull(DPT2.DESCRICAOSTRAHIE_PTR, '')
+            ,'Especie'                    = IsNull(SIK.KindName, '')
+            ,'EspecieStrathie'            = IsNull(SIK.DescricaoStrahie_PTR, '')
+            ,'Tipo'                       = IsNull(SAHIV.KindId+'-'+SAHIV.KindName,'')
+            ,'TipoStrathie'               = IsNull(SAHBN.DescricaoStrahie_PTR,'')
+            ,'EspecieCientifica'          = IsNull(SAHBN.Description, '')
+            ,'Variedade'                  = IsNull(SAHIV.VarietyName, '')
+            ,'Agenteproprietario'         = IsNull(SAHRC.Description, '')
+            ,'FaseG'                      = IsNull(SAHIV.GLevel, '')
+            ,'Segmento'                   = IsNull(SAHIV.DescricaoSegmentoPesquisa_PTR, '')
+            ,'SegmentABCSEM'              = IsNull(SMABC.DescricaoSegmento, '')
+            ,'SegmentoGrupoSakata'        = IsNull(SAHIV.DescricaoSegmentoPassion_PTR,'')
+            ,'SegmentoMarketing'          = IsNull(SAHIV.DESCRICAOSEGMENTOMARKETING_PTR, '')
+            ,'Origem'                     = IsNull(IPTP.Name,'')
+            ,'CodigoProduto'              = IsNull(IT.SahDisplayProductNumber,'')   
+            ,'ProdutoSKU'                 = IsNull(CIT.NAME,'')    
+            ,'TipoEmbalagem'              = IsNull(SIP.PACKAGENAME,'')
+            ,'AnoFiscal'                  = YEAR(CIJ.CREATEDDATETIME)
+            ,'Cenario'                    = 'Realizado'
+            ,'Versao'                     = CAST(YEAR(CIJ.CREATEDDATETIME) AS VARCHAR(4))+'_Ofici'
+            ,'Moeda'                      = IsNull(CIJ.CurrencyCode,'')
+            ,'UnidadeMedida'              = IsNull(CIT.SalesUnit, '')
+            ,'PrecoUnitario'              = IsNull(CIT.SalesPrice, 0.0)
+            ,'Quantidade'                 = IsNull(CIT.InventQty, 0.0)
+            ,'ValorLiquido'               = IsNull(CIT.LineAmount, 0.0)
+            ,'StatusFaturamento'              = EVSalesStatus.Name
+            ,'TipoVendas'                 = isnull(EVSalesType.NAME,'')
+            ,'CustoRealizado'             = isnull((SELECT sum(CostAmountPosted)+
+       sum(CostAmountAdjustment)
+FROM del_inventTrans IT JOIN del_InventTransOrigin ITO ON ITO.RECID = IT.INVENTTRANSORIGIN
+WHERE ITO.INVENTTRANSID = CIT.INVENTTRANSID
+AND  IT.DateFinancial = CIT.invoiceDate
+AND IT.InvoiceId = CIT.INVOICEID
+AND IT.Qty <> 0
+AND  IT.PackingSlipReturned = 0
+AND  IT.StatusReceipt <= 1
+AND IT.StatusIssue <= 1),0.0)
+            ,'RoyaltPagarRealizado'       = isnull(MRVT.CorrectedRoyaltyAmt,0.0)
+			
+
+
+
+FROM del_CustInvoiceJour                        CIJ  
+ INNER JOIN DEL_SalesTable                                ST    ON ST.DATAAREAID = CIJ.DATAAREAID
+                                                          AND ST.SALESID = CIJ.SALESID
+ LEFT JOIN del_smmSalesUnit                     SSU   ON    SSU.DataAreaId = CIJ.DataAreaId
+                                                          AND   SSU.SalesUnitId = ST.SalesUnitId
+
+ INNER JOIN del_smmSalesUnit                    SSUV  ON  SSUV.SalesUnitId = SSU.ParentId  
+                                                          AND SSUV.DATAAREAID = SSU.DATAAREAID
+ LEFT JOIN del_CustInvoiceTrans                 CIT    ON  CIT.DataAreaId = CIJ.DataAreaId
+                                                          AND  CIT.SalesId = CIJ.SalesId
+                                                          AND  CIT.INVOICEID = CIJ.INVOICEID
+                                                          AND  CIT.INVOICEDATE = CIJ.INVOICEDATE
+                                                          AND  CIT.NUMBERSEQUENCEGROUP = CIJ.NUMBERSEQUENCEGROUP
+
+ LEFT JOIN del_InventTable                      IT    ON    IT.DataAreaId = CIT.DataAreaId
+                                                          AND   IT.ItemId = CIT.ItemId
+
+ LEFT JOIN del_SAHItemKind                       SIK    ON SIK.Kindid = IT.SAHKINDID                                            
+ LEFT JOIN del_SAHITEMPACKAGE                   SIP  ON  SIP.PACKAGEID = IT.SAHPACKAGEID
+ LEFT JOIN del_SAHItemVariety                   SAHIV ON    SAHIV.VarietyId = IT.SAHVarietyId 
+ LEFT JOIN del_SAHBotanicalName                 SAHBN ON    SAHBN.BotanicalId = SAHIV.BotanicalId
+ LEFT JOIN del_SAHRoyaltyCompanyTable           SAHRC ON    SAHRC.DataAreaId = IT.DataAreaId
+                                                          AND   SAHRC.Company = SAHIV.GeneticsOwner
+
+ LEFT JOIN del_SegmentoMarketing_PTR            SMABC ON    SMABC.DataAreaId = IT.DataAreaId
+                                                          AND   SMABC.CodigoSegmento = SAHIV.CodigoSegmentoABCSEM_PTR                                                                         
+
+ JOIN EnumValueTable                        EVSalesStatus ON    EVSalesStatus.ENUMVALUE = ST.SalesStatus
+                                                          AND   EVSalesStatus.ENUMID = 4492
+
+
+ JOIN EnumValueTable                          EVSalesType ON    EVSalesType.ENUMVALUE = ST.SALESTYPE
+                                                          AND   EVSalesType.ENUMID = 2721
+														  
+
+ LEFT JOIN del_smmBusRelSubSegmentGroup         SBRSG ON   SBRSG.SubSegmentId = ST.SubsegmentId_PTR
+                                                          AND  SBRSG.DataAreaId = CIJ.DataAreaId
+
+ LEFT JOIN del_CustTable                        CT    ON   CT.AccountNum = CIJ.InvoiceAccount
+                                                          AND  CT.DataAreaId = CIJ.DataAreaId
+                                  
+ LEFT JOIN del_DirPartyTable                    DPT   ON   DPT.RecId = CT.Party
+ LEFT JOIN del_DirPartyTable                    DPT2  ON   DPT2.OMOPERATINGUNITNUMBER = SIK.BUSINESSUNIT
+ LEFT JOIN del_InventProductTypeTable_BR        IPTP  ON  IPTP.ProductTypeId = IT.InventProductType_BR
+                                                          AND IPTP.DataAreaId = IT.DataAreaId
+
+LEFT JOIN del_MCRRoyaltyVendTable               MRVT  ON  MRVT.CUSTINVOICETRANSREFRECID = CIT.RECID
+                                                          AND MRVT.DataAreaid = CIT.DataAreaid
+
+LEFT JOIN del_HyperionIntegrationBusinessUnit_PTR HIBU ON HIBU.DYNAMICSSEGMENTID = ST.SubsegmentId_PTR
+                                                          AND HIBU.DATAAREAID = ST.DATAAREAID
+LEFT JOIN DEL_HyperionIntegrationBusinessSegment_PTR HIBS ON HIBS.DYNAMICSSUBSEGMENTID = ST.SubsegmentId_PTR
+														  AND HIBS.DATAAREAID = ST.DATAAREAID
+
+WHERE ST.SALESTYPE = 3 
+
+
+
+
+ 
+ 
+ union 
+select 
+	'Date'						= CASE
+	WHEN HIIS.INTEGRATIONPERIOD = 'jan' THEN convert(datetime,'01/01/'+substring(INTEGRATIONVERSION,1,4),105) 
+	WHEN HIIS.INTEGRATIONPERIOD = 'fev' THEN convert(datetime,'01/02/'+substring(INTEGRATIONVERSION,1,4),105)
+	WHEN HIIS.INTEGRATIONPERIOD = 'mar' THEN convert(datetime,'01/03/'+substring(INTEGRATIONVERSION,1,4),105)
+	WHEN HIIS.INTEGRATIONPERIOD = 'abr' THEN convert(datetime,'01/04/'+substring(INTEGRATIONVERSION,1,4),105)
+	WHEN HIIS.INTEGRATIONPERIOD = 'mai' THEN convert(datetime,'01/05/'+substring(INTEGRATIONVERSION,1,4),105)
+	WHEN HIIS.INTEGRATIONPERIOD = 'jun' THEN convert(datetime,'01/06/'+substring(INTEGRATIONVERSION,1,4),105)
+	WHEN HIIS.INTEGRATIONPERIOD = 'jul' THEN convert(datetime,'01/07/'+substring(INTEGRATIONVERSION,1,4),105)
+	WHEN HIIS.INTEGRATIONPERIOD = 'ago' THEN convert(datetime,'01/08/'+substring(INTEGRATIONVERSION,1,4),105)
+	WHEN HIIS.INTEGRATIONPERIOD = 'set' THEN convert(datetime,'01/09/'+substring(INTEGRATIONVERSION,1,4),105)
+	WHEN HIIS.INTEGRATIONPERIOD = 'out' THEN convert(datetime,'01/10/'+substring(INTEGRATIONVERSION,1,4),105)
+	WHEN HIIS.INTEGRATIONPERIOD = 'nov' THEN convert(datetime,'01/11/'+substring(INTEGRATIONVERSION,1,4),105)
+	WHEN HIIS.INTEGRATIONPERIOD = 'dez' THEN convert(datetime,'01/12/'+substring(INTEGRATIONVERSION,1,4),105)
+	END 	
+   ,'Empresa'					  = HIIS.DATAAREAID 
+   ,'IdVenda'					  = ''
+   ,'BusinessSegmentHyperion'	  = IsNull(HIBS.HyperionBusinessSegment,'') 
+   ,'BusinessSegment'             = ''
+   ,'BusinessSegmentDescricao'	  = ''
+   ,'BusinessSegmentMR'			  = '' 
+   ,'BusinessSegmentInterc/Third' = ''
+   ,'Modalidade'			  	 = HIBU.DYNAMICSSEGMENTID
+   ,'Mercado'                    = iif(SSUV.ParentID = '',SSU.ParentID,SSUv.ParentId)
+   ,'BU'                         = IsNull(SSU.ParentId, '')
+   ,'RegiaoDeVenda'              = HISR.DYNAMICSSALESUNIT 
+   ,'CodigoCliente'              = HICA.DYNAMICSACCOUNTNUM
+   ,'ClienteMatriz'              = IIF(CT.CompanyChainId = '',DPT.NAME,CT.CompanyChainId)
+   ,'ClienteFilial'              = DPT.NAME
+   ,'Material'                   = IsNull(DPT2.NAME, '')
+   ,'MaterialStrathie'           = IsNull(DPT2.DESCRICAOSTRAHIE_PTR, '')
+   ,'Especie'                    = IsNull(SIK.KindName, '')
+   ,'EspecieStrathie'            = IsNull(SIK.DescricaoStrahie_PTR, '')
+   ,'Tipo'                       = IsNull(SAHIV.KindId+'-'+SAHIV.KindName,'')
+   ,'TipoStrathie'               = IsNull(SAHBN.DescricaoStrahie_PTR,'')
+   ,'EspecieCientifica'          = IsNull(SAHBN.Description, '')
+   ,'Variedade'                  = IsNull(SAHIV.VarietyName, '')
+   ,'Agenteproprietario'         = IsNull(SAHRC.Description, '')
+   ,'FaseG'                      = IsNull(SAHIV.GLevel, '')
+   ,'Segmento'                   = IsNull(SAHIV.DescricaoSegmentoPesquisa_PTR, '')
+   ,'SegmentABCSEM'              = IsNull(SMABC.DescricaoSegmento, '')
+   ,'SegmentoGrupoSakata'        = IsNull(SAHIV.DescricaoSegmentoPassion_PTR,'')
+   ,'SegmentoMarketing'          = IsNull(SAHIV.DESCRICAOSEGMENTOMARKETING_PTR, '')
+   ,'Origem'                     = IsNull(IPTP.Name,'')
+   ,'CodigoProduto'              = HIIC.DYNAMICSITEMID
+   ,'ProdutoSKU'                 = IsNull(EPT.NAME,'') 
+   ,'TipoEmbalagem'              = IsNull(SIP.PACKAGENAME,'')
+   ,'AnoFiscal'                  = substring(INTEGRATIONVERSION,1,4)
+   ,'Cenario'					 = HIIS.INTEGRATIONSCENARIO
+   ,'Versao'		   			 = HIIS.INTEGRATIONVERSION
+   ,'Moeda'						 = HIIS.CURRENCYCODE
+   ,'UnidadeMedida'              = IsNull(ITM.UNITID,'')
+   ,'PrecoUnitario'              = 0.00
+   ,'Quantidade'                 = ISNULL((SELECT SUM(HIIS2.AMOUNT) FROM DEL_HyperionIntegrationImporterSales_PTR HIIS2, DEL_HyperionIntegrationParameters_PTR  HIP 
+									WHERE HIIS2.DATAAREAID = HIIS.DATAAREAID
+									AND HIIS2.ITEMCODE = HIIS.ITEMCODE
+									AND HIIS2.SALESREGION = HIIS.SALESREGION
+									AND HIIS2.CUSTACCOUNT = HIIS.CUSTACCOUNT
+								    AND HIIS2.INTEGRATIONSCENARIO = HIIS.INTEGRATIONSCENARIO
+									AND HIIS2.CURRENCYCODE = HIIS.CURRENCYCODE
+									AND HIIS2.INTEGRATIONFISCALYEAR = HIIS.INTEGRATIONFISCALYEAR 
+									AND HIIS2.INTEGRATIONVERSION = HIIS.INTEGRATIONVERSION
+									AND HIIS2.BUSINESSSEGMENT = HIIS.BUSINESSSEGMENT
+									AND HIIS2.BUSINESSUNIT = HIIS.BUSINESSUNIT
+									AND HIP.MAINSALESQUANTITY = HIIS2.MAINACCOUNT
+									),0.0)
+   ,'ValorLiquido'               = ISNULL((SELECT SUM(HIIS2.AMOUNT) FROM DEL_HyperionIntegrationImporterSales_PTR HIIS2, DEL_HyperionIntegrationParameters_PTR  HIP 
+									WHERE HIIS2.DATAAREAID = HIIS.DATAAREAID
+									AND HIIS2.ITEMCODE = HIIS.ITEMCODE
+									AND HIIS2.SALESREGION = HIIS.SALESREGION
+									AND HIIS2.CUSTACCOUNT = HIIS.CUSTACCOUNT
+								    AND HIIS2.INTEGRATIONSCENARIO = HIIS.INTEGRATIONSCENARIO
+									AND HIIS2.CURRENCYCODE = HIIS.CURRENCYCODE
+									AND HIIS2.INTEGRATIONFISCALYEAR = HIIS.INTEGRATIONFISCALYEAR 
+									AND HIIS2.BUSINESSSEGMENT = HIIS.BUSINESSSEGMENT
+									AND HIIS2.BUSINESSUNIT = HIIS.BUSINESSUNIT
+									AND HIIS2.INTEGRATIONVERSION = HIIS.INTEGRATIONVERSION
+									AND HIP.MainRevenueAccount = HIIS2.MAINACCOUNT
+									 ),0.0)
+   ,'StatusFaturamento'          = 'Orcado'
+   ,'TipoVendas'                 = 'Budget'
+   ,'CustoRealizado'             = ISNULL((SELECT SUM(HIIS2.AMOUNT) FROM DEL_HyperionIntegrationImporterSales_PTR HIIS2, DEL_HyperionIntegrationParameters_PTR  HIP 
+									WHERE HIIS2.DATAAREAID = HIIS.DATAAREAID
+									AND HIIS2.ITEMCODE = HIIS.ITEMCODE
+									AND HIIS2.SALESREGION = HIIS.SALESREGION
+									AND HIIS2.CUSTACCOUNT = HIIS.CUSTACCOUNT
+								    AND HIIS2.INTEGRATIONSCENARIO = HIIS.INTEGRATIONSCENARIO
+									AND HIIS2.CURRENCYCODE = HIIS.CURRENCYCODE
+									AND HIIS2.INTEGRATIONFISCALYEAR = HIIS.INTEGRATIONFISCALYEAR 
+									AND HIIS2.BUSINESSSEGMENT = HIIS.BUSINESSSEGMENT
+									AND HIIS2.BUSINESSUNIT = HIIS.BUSINESSUNIT
+									AND HIIS2.INTEGRATIONVERSION = HIIS.INTEGRATIONVERSION
+									AND HIP.MAINCOSTACCOUNT = HIIS2.MAINACCOUNT
+									 ),0.0)
+   ,'RoyaltPagarRealizado'       = ISNULL((SELECT SUM(HIIS2.AMOUNT) FROM DEL_HyperionIntegrationImporterSales_PTR HIIS2, DEL_HyperionIntegrationParameters_PTR  HIP 
+									WHERE HIIS2.DATAAREAID = HIIS.DATAAREAID
+									AND HIIS2.ITEMCODE = HIIS.ITEMCODE
+									AND HIIS2.SALESREGION = HIIS.SALESREGION
+									AND HIIS2.CUSTACCOUNT = HIIS.CUSTACCOUNT
+								    AND HIIS2.INTEGRATIONSCENARIO = HIIS.INTEGRATIONSCENARIO
+									AND HIIS2.CURRENCYCODE = HIIS.CURRENCYCODE
+									AND HIIS2.INTEGRATIONFISCALYEAR = HIIS.INTEGRATIONFISCALYEAR 
+									AND HIIS2.INTEGRATIONVERSION = HIIS.INTEGRATIONVERSION
+									AND HIIS2.BUSINESSSEGMENT = HIIS.BUSINESSSEGMENT
+									AND HIIS2.BUSINESSUNIT = HIIS.BUSINESSUNIT
+									AND HIP.MAINROYALTIESPAYABLEACCOUNT = HIIS2.MAINACCOUNT
+									 ),0.0)
+									
+																
+	
+
+
+
+from DEL_HyperionIntegrationImporterSales_PTR		   HIIS
+LEFT JOIN DEL_HyperionIntegrationItemCode_PTR		   HIIC	ON HIIC.DATAAREAID = HIIS.DATAAREAID 
+															AND HIIC.HYPERIONITEMCODE = HIIS.ITEMCODE
+LEFT JOIN DEL_HyperionIntegrationBusinessSegment_PTR   HIBS	ON  HIBS.DATAAREAID = HIIS.DATAAREAID
+															AND HIBS.HYPERIONBUSINESSSEGMENT = HIIS.BUSINESSSEGMENT
+LEFT JOIN DEL_HyperionIntegrationSalesRegion_PTR	   HISR ON HISR.DATAAREAID = HIIS.DATAAREAID
+															AND HISR.HYPERIONSALESREGION = HIIS.SALESREGION
+LEFT JOIN DEL_HyperionIntegrationMainAccount_PTR	   HIMA ON HIMA.HYPERIONMAINACCOUNT  = HIIS.MAINACCOUNT
+LEFT JOIN MainAccount								   MA   ON MA.MAINACCOUNTID = HIMA.DYNAMICSACCOUNTNUM
+LEFT JOIN DEL_HyperionIntegrationBusinessUnit_PTR	   HIBU ON HIBU.DATAAREAID = HIIS.DATAAREAID
+															AND HIBU.HYPERIONBUSINESSUNIT = HIIS.BUSINESSUNIT
+
+LEFT JOIN DEL_HyperionIntegrationCustAccount_PTR	  HICA  ON HICA.DATAAREAID = HIIS.DATAAREAID
+															AND HICA.HYPERIONCUSTACCOUNT = HIIS.CUSTACCOUNT
+LEFT JOIN del_smmSalesUnit							 SSU   ON SSU.DATAAREAID = HISR.DATAAREAID
+															AND SSU.SalesUnitId = HISR.DYNAMICSSALESUNIT 
+INNER JOIN del_smmSalesUnit							 SSUV	ON  SSUV.SalesUnitId = SSU.ParentId  
+                                                            AND SSUV.DATAAREAID = SSU.DATAAREAID
+LEFT JOIN del_CustTable					             CT    ON  CT.DataAreaId = HICA.DataAreaId 
+											                AND CT.AccountNum = HICA.DYNAMICSACCOUNTNUM
+LEFT JOIN del_DirPartyTable							 DPT   ON   DPT.RecId = CT.Party                               
+LEFT JOIN del_InventTable							 IT    ON  IT.DataAreaId = HIIC.DataAreaId
+                                                            AND IT.ItemId = HIIC.DYNAMICSITEMID
+LEFT JOIN DEL_InventTableModule                      ITM    ON  ITM.DataAreaid = HIIC.DataAreaid
+															AND ITM.ItemId = HIIC.DYNAMICSITEMID
+LEFT JOIN del_SAHItemKind							 SIK   ON  SIK.Kindid = IT.SAHKINDID  
+LEFT JOIN del_DirPartyTable							 DPT2  ON  DPT2.OMOPERATINGUNITNUMBER = SIK.BUSINESSUNIT
+LEFT JOIN del_SAHItemVariety                         SAHIV ON  SAHIV.VarietyId = IT.SAHVarietyId 
+LEFT JOIN del_SAHITEMPACKAGE						 SIP   ON   SIP.PACKAGEID = IT.SAHPACKAGEID
+LEFT JOIN del_SAHBotanicalName                       SAHBN ON  SAHBN.BotanicalId = SAHIV.BotanicalId
+LEFT JOIN del_SAHRoyaltyCompanyTable                 SAHRC ON  SAHRC.DataAreaId = IT.DataAreaId
+														   AND SAHRC.Company = SAHIV.GeneticsOwner
+LEFT JOIN del_SegmentoMarketing_PTR				     SMABC ON  SMABC.DataAreaId = IT.DataAreaId
+                                                           AND SMABC.CodigoSegmento = SAHIV.CodigoSegmentoABCSEM_PTR 
+LEFT JOIN del_InventProductTypeTable_BR				 IPTP  ON  IPTP.ProductTypeId = IT.InventProductType_BR
+                                                           AND IPTP.DataAreaId = IT.DataAreaId
+LEFT JOIN DEL_EcoresProductTranslation               EPT   ON  EPT.Product = IT.Product
+														   and EPT.LANGUAGEID = 'PT-BR'
+
+
+GROUP BY HIIC.DYNAMICSITEMID,
+HIIS.INTEGRATIONPERIOD,
+HISR.DYNAMICSSALESUNIT,
+HIBU.DYNAMICSSEGMENTID,
+HIBS.HYPERIONBUSINESSSEGMENT,
+SSUV.ParentID,
+SSU.ParentID,
+HICA.DYNAMICSACCOUNTNUM,
+CT.CompanyChainId,
+DPT.NAME,
+DPT2.NAME,
+DPT2.DESCRICAOSTRAHIE_PTR,
+SIK.KindName,
+SIK.DescricaoStrahie_PTR,
+SAHIV.KindId,
+SAHIV.KindName,
+SAHBN.DescricaoStrahie_PTR,
+SAHBN.Description,
+SAHIV.VarietyName,
+SAHRC.Description,
+SAHIV.GLevel,
+SAHIV.DescricaoSegmentoPesquisa_PTR,
+SMABC.DescricaoSegmento,
+SAHIV.DescricaoSegmentoPassion_PTR,
+SAHIV.DESCRICAOSEGMENTOMARKETING_PTR,
+IPTP.Name,
+EPT.NAME,
+ITM.UNITID,
+HIIS.INTEGRATIONVERSION,
+SIP.PACKAGENAME,
+HIIS.DATAAREAID,
+HIIS.INTEGRATIONSCENARIO,
+HIIS.CURRENCYCODE,
+HIIS.INTEGRATIONFISCALYEAR,
+HIIS.INTEGRATIONVERSION,
+HIIS.ITEMCODE,
+HIIS.SALESREGION,
+HIIS.CUSTACCOUNT,
+HIIS.BUSINESSSEGMENT,
+HIIS.BUSINESSUNIT
+
+
+
+
+
+
+
+
+
+
+GO
+
+
