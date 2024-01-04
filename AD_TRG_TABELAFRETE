@@ -1,0 +1,39 @@
+CREATE OR REPLACE TRIGGER "AD_TRG_TABELAFRETE" 
+  before delete on AD_TABELAFRETE
+  for each row
+declare
+
+
+/*----------------------------------------------------------------------------------------------------
+  %proposito:    Bloquear a exclusão ta tabela de calculo de frete, quando já existir detalhamento
+  %observacao:   Solicitada a criação pela SANDRA.OLIVEIRA após um problema de perca de dados
+  %historia:
+  * 01.00.0 30/08/2022 Diego.Alves
+  - versao inicial
+  ----------------------------------------------------------------------------------------------------*/
+
+begin
+
+
+
+
+  IF STP_GET_ATUALIZANDO OR NOT FPODEVALIDAR('AD_TABELAFRETE') THEN
+        RETURN;
+     END IF;
+
+
+
+
+     IF  DELETING AND STP_GET_CODUSULOGADO NOT IN(0,125) THEN 
+
+        RAISE_APPLICATION_ERROR(-20101,FC_FORMATAHTML(
+        'Ação Proibida!',
+        'Proibida a exclusão de Tabelas de cálculo!',
+        'Entre em contato com TI para proceder com exclusão'));
+
+     END IF;
+
+END;
+
+
+/
