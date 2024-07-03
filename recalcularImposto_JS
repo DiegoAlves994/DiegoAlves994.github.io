@@ -1,0 +1,14 @@
+var impostosHelper = newJava("br.com.sankhya.modelcore.comercial.impostos.ImpostosHelpper");
+var centralFinanceiro = newJava("br.com.sankhya.modelcore.comercial.CentralFinanceiro");
+
+for(var i = 0; i < linhas.length; i++){
+    var linha = linhas[i];
+
+    var registros =  linha.getCampo('NUNOTA');
+
+    impostosHelper.setForcarRecalculo(true);
+    impostosHelper.carregarNota(registros);
+    impostosHelper.calcularImpostos(registros);
+    impostosHelper.totalizarNota(registros);
+    impostosHelper.salvarNota();
+}
